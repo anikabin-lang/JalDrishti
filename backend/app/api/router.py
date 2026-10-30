@@ -8,6 +8,7 @@ and Knowledge subsystems.
 from datetime import datetime, timezone
 import json
 import logging
+import re
 from typing import Any, Dict, List, Optional, Union
 import uuid
 
@@ -17,6 +18,7 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Query,
     Request,
     UploadFile,
     status,
@@ -33,10 +35,15 @@ from backend.app.schemas.analysis import AnalysisResult
 from backend.app.schemas.engineering import EngineeringResult
 from backend.app.schemas.health import HealthResponse
 from backend.app.schemas.image import (
+    CloudinarySearchResponse,
+    HeritageImageSummary,
     ImageDeleteResponse,
     ImageMetadata,
     ImageUploadResponse,
     InspectionImagesListResponse,
+    PaginatedImagesResponse,
+    SiteListResponse,
+    SiteSummary,
 )
 from backend.app.schemas.material import MaterialCompatibilityResult
 from backend.app.schemas.requests import (
@@ -51,6 +58,7 @@ from backend.app.services.analysis_service import analysis_service
 from backend.app.services.cloudinary_service import (
     CloudinaryConfigError,
     CloudinaryDeleteError,
+    CloudinarySearchError,
     CloudinaryUploadError,
     cloudinary_service,
 )
@@ -129,7 +137,10 @@ async def _extract_pipeline_request(
                         width_pixels=record.width,
                         height_pixels=record.height,
                     )
-        return req_model, None, None
+                # Ensure original-quality image is used for vision model inference
+                if image_bytes is None and record.secure_url:
+                    image_bytes = cloudinary_service.fetch_original_image_bytes(record.secure_url)
+        return req_model, image_bytes, None
 
     # Handle multipart/form-data or application/x-www-form-urlencoded
     form = await request.form()
@@ -146,6 +157,8 @@ async def _extract_pipeline_request(
                 width_pixels=record.width,
                 height_pixels=record.height,
             )
+            if image_bytes is None and record.secure_url:
+                image_bytes = cloudinary_service.fetch_original_image_bytes(record.secure_url)
 
     if uploaded_file is not None and hasattr(uploaded_file, "read"):
         image_bytes = await uploaded_file.read()
@@ -428,6 +441,7 @@ async def upload_inspection_image(
     images: Optional[UploadFile] = File(default=None),
     image: Optional[UploadFile] = File(default=None),
     inspection_id: Optional[str] = Form(default=None),
+    site_id: Optional[str] = Form(default=None),
     structure_type: Optional[str] = Form(default=None),
     structure_name: Optional[str] = Form(default=None),
     notes: Optional[str] = Form(default=None),
@@ -484,20 +498,33 @@ async def upload_inspection_image(
             ),
         )
 
-    # 3. Generate stable identifiers
+    # 3. Generate stable identifiers and hierarchical public ID
     gen_image_id = f"img_{uuid.uuid4()}"
     assigned_inspection_id = inspection_id or f"insp_{uuid.uuid4()}"
-    public_id = f"{settings.cloudinary_folder}/{gen_image_id}"
+    clean_site_id = re.sub(r"[^a-zA-Z0-9_\-]", "", site_id).strip() if site_id else None
+    clean_insp_id = re.sub(r"[^a-zA-Z0-9_\-]", "", assigned_inspection_id).strip()
+
+    # Predictable site-wise asset organization: jaldrishti/inspections/<site_id>/<inspection_id>/<image_id>
+    if clean_site_id:
+        public_id = f"{settings.cloudinary_folder}/{clean_site_id}/{clean_insp_id}/{gen_image_id}"
+    else:
+        public_id = f"{settings.cloudinary_folder}/{gen_image_id}"
 
     # 4. Upload to Cloudinary
     tags = ["jaldrishti", "heritage_water_structure"]
     if structure_type:
         tags.append(structure_type.lower())
+    if clean_site_id:
+        tags.append(f"site:{clean_site_id}")
+    if clean_insp_id:
+        tags.append(f"insp:{clean_insp_id}")
 
     context = {
         "image_id": gen_image_id,
         "inspection_id": assigned_inspection_id,
     }
+    if clean_site_id:
+        context["site_id"] = clean_site_id
     if structure_name:
         context["structure_name"] = structure_name
 
@@ -527,9 +554,13 @@ async def upload_inspection_image(
 
     # 5. Assemble persistent metadata
     now_iso = datetime.now(timezone.utc).isoformat()
+    thumb_url = upload_res.get("thumbnail_url") or cloudinary_service.build_thumbnail_url(
+        upload_res.get("public_id", public_id), format_str
+    )
     metadata = ImageMetadata(
         image_id=gen_image_id,
         inspection_id=assigned_inspection_id,
+        site_id=clean_site_id,
         public_id=upload_res.get("public_id", public_id),
         asset_id=upload_res.get("asset_id"),
         resource_type="image",
@@ -545,6 +576,7 @@ async def upload_inspection_image(
         or cloudinary_service.build_preview_url(
             upload_res.get("public_id", public_id), format_str
         ),
+        thumbnail_url=thumb_url,
         secure_url=upload_res.get("secure_url")
         or cloudinary_service.build_original_url(
             upload_res.get("public_id", public_id), format_str
@@ -575,6 +607,105 @@ async def upload_inspection_image(
         )
 
     return metadata.to_upload_response()
+
+
+@api_router.get(
+    "/images",
+    response_model=PaginatedImagesResponse,
+    status_code=status.HTTP_200_OK,
+    summary="List Stored Heritage Images",
+    description="Retrieve paginated inspection photographs with site, inspection, and typology filtering.",
+    tags=["Images"],
+)
+def list_images(
+    site_id: Optional[str] = Query(default=None, description="Heritage site identifier"),
+    inspection_id: Optional[str] = Query(default=None, description="Inspection session identifier"),
+    structure_type: Optional[str] = Query(default=None, description="Architectural typology filter"),
+    limit: int = Query(default=20, ge=1, le=100, description="Page size limit"),
+    offset: int = Query(default=0, ge=0, description="Offset for pagination"),
+) -> PaginatedImagesResponse:
+    """Retrieve filtered, paginated heritage inspection image records."""
+    records, total = image_repository.list_images(
+        site_id=site_id,
+        inspection_id=inspection_id,
+        structure_type=structure_type,
+        limit=limit,
+        offset=offset,
+    )
+    return PaginatedImagesResponse(
+        total=total,
+        limit=limit,
+        offset=offset,
+        site_id=site_id,
+        inspection_id=inspection_id,
+        images=[r.to_heritage_summary() for r in records],
+    )
+
+
+@api_router.get(
+    "/images/cloud-search",
+    response_model=CloudinarySearchResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Search Cloudinary Assets",
+    description="Perform structured live asset search directly against Cloudinary using official Search or Admin API.",
+    tags=["Images"],
+)
+def search_cloudinary_assets(
+    query: Optional[str] = Query(default=None, description="Cloudinary search expression or keywords"),
+    site_id: Optional[str] = Query(default=None, description="Heritage site identifier"),
+    inspection_id: Optional[str] = Query(default=None, description="Inspection identifier"),
+    folder: Optional[str] = Query(default=None, description="Directory folder path"),
+    tag: Optional[str] = Query(default=None, description="Search tag"),
+    max_results: int = Query(default=20, ge=1, le=100, description="Max assets to return"),
+    next_cursor: Optional[str] = Query(default=None, description="Pagination cursor"),
+) -> CloudinarySearchResponse:
+    """Execute authenticated Cloudinary asset search with cursor pagination."""
+    if not cloudinary_service.is_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Cloudinary image storage service is not configured.",
+        )
+
+    tags_list = [tag] if tag else None
+    try:
+        search_res = cloudinary_service.search_assets(
+            expression=query,
+            folder=folder,
+            tags=tags_list,
+            site_id=site_id,
+            inspection_id=inspection_id,
+            max_results=max_results,
+            next_cursor=next_cursor,
+        )
+        return CloudinarySearchResponse.model_validate(search_res)
+    except CloudinaryConfigError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
+    except CloudinarySearchError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Cloudinary asset search failed: {e}",
+        )
+    except Exception as e:
+        logger.error("Unexpected failure in Cloudinary asset search: %s", type(e).__name__)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal error processing asset search.",
+        )
+
+
+@api_router.get(
+    "/sites",
+    response_model=SiteListResponse,
+    status_code=status.HTTP_200_OK,
+    summary="List Heritage Sites",
+    description="Retrieve all heritage sites with recorded visual survey assets and inspection metrics.",
+    tags=["Sites"],
+)
+def list_heritage_sites() -> SiteListResponse:
+    """Retrieve aggregated heritage sites and survey counts."""
+    sites_data = image_repository.list_sites()
+    summaries = [SiteSummary.model_validate(s) for s in sites_data]
+    return SiteListResponse(total_sites=len(summaries), sites=summaries)
 
 
 @api_router.get(

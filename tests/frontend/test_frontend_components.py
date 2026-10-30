@@ -43,6 +43,7 @@ def test_page_routes_exist() -> None:
         "UploadPage.tsx",
         "AnalysisPage.tsx",
         "ReportPage.tsx",
+        "GalleryPage.tsx",
     ]
 
     for page in required_pages:

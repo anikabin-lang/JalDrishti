@@ -5,10 +5,11 @@ import { UploadPage } from './pages/UploadPage';
 import { AnalysisPage } from './pages/AnalysisPage';
 import { KnowledgePage } from './pages/KnowledgePage';
 import { ReportPage } from './pages/ReportPage';
+import { GalleryPage } from './pages/GalleryPage';
 import { AppRoute, InspectionSession } from './types';
 import { getDevelopmentMockFixture } from './services/api';
 
-const ROUTES: AppRoute[] = ['/', '/upload', '/analysis', '/knowledge', '/report'];
+const ROUTES: AppRoute[] = ['/', '/upload', '/analysis', '/knowledge', '/report', '/gallery'];
 
 const routeFromLocation = (): AppRoute => {
   const path = window.location.pathname.replace(/\/+$/, '') || '/';
@@ -67,6 +68,9 @@ export const App: React.FC = () => {
       {currentRoute === '/knowledge' && <KnowledgePage onRouteChange={handleNavigate} />}
       {currentRoute === '/report' && (
         <ReportPage session={session} onRouteChange={handleNavigate} onLoadFixture={handleLoadFixture} />
+      )}
+      {currentRoute === '/gallery' && (
+        <GalleryPage onRouteChange={handleNavigate} onInspectionComplete={handleInspectionComplete} />
       )}
     </AppShell>
   );

@@ -86,7 +86,8 @@ Each module answers an exact, scoped question without trespassing on other modul
 | **Material (Kirti)** | *"What intervention families may be compatible?"* | Evaluates compatibility dimensions (mechanical, moisture, thermal, chemical, reversibility, heritage, visual). Treats photo-identification as probabilistic. |
 | **Restoration (Kirti & Swastik)** | *"What action should be considered?"* | Constructs phased remediation roadmaps while warning against damaging modern materials (e.g., OPC cement rendering). |
 | **AI / Contextualization** | *"How can the system explain and contextualize the result?"* | Generates human-readable explanations strictly grounded in structured vision and engineering findings. **Never** invents measurements or bypasses engineering calculations. |
-| **Frontend (Anika)** | *"How should the user interact with the system?"* | Presentation layer. Displays images, defect overlays, scores, IKS wisdom, and interactive 3D digital twins. Never implements isolated business scoring. |
+| **Cloudinary Asset Management** | *"How are inspection photographs stored, retrieved, and delivered?"* | Full asset lifecycle management via official Python SDK. Organizes assets site-wise, serves auto-optimized WebP previews and thumbnails, executes Search API asset queries, and preserves uncompressed originals for vision inference and conservation audits. |
+| **Frontend (Anika)** | *"How should the user interact with the system?"* | Presentation layer. Displays images, defect overlays, scores, IKS wisdom, interactive 3D digital twins, and the Heritage Image Gallery (`05 / Gallery`). Never implements isolated business scoring. |
 | **Backend (Swastik)** | *"How do all modules communicate?"* | Central hub. Orchestrates pipeline execution, validates schemas, and guarantees API reliability. |
 
 ---

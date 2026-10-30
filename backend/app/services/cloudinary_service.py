@@ -33,6 +33,11 @@ class CloudinaryDeleteError(Exception):
     pass
 
 
+class CloudinarySearchError(Exception):
+    """Raised when Cloudinary search or asset listing encounters a provider error."""
+    pass
+
+
 class CloudinaryService:
     """Service handling backend-controlled Cloudinary storage and URL derivation."""
 
@@ -191,9 +196,12 @@ class CloudinaryService:
                 "url": response.get("url"),
             }
 
-            # Generate preview url with standard responsive transformations
+            # Generate preview and thumbnail urls with standard responsive transformations
             if result.get("public_id"):
                 result["preview_url"] = self.build_preview_url(
+                    result["public_id"], result.get("format")
+                )
+                result["thumbnail_url"] = self.build_thumbnail_url(
                     result["public_id"], result.get("format")
                 )
 
@@ -241,6 +249,205 @@ class CloudinaryService:
             err_msg = str(e)
             logger.error("Cloudinary asset deletion failed for %s: %s", public_id, err_msg)
             raise CloudinaryDeleteError(f"Cloudinary deletion failed: {type(e).__name__}") from e
+
+
+    def search_assets(
+        self,
+        expression: Optional[str] = None,
+        folder: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        site_id: Optional[str] = None,
+        inspection_id: Optional[str] = None,
+        max_results: int = 20,
+        next_cursor: Optional[str] = None,
+        sort_by_field: str = "created_at",
+        sort_direction: str = "desc",
+    ) -> Dict[str, Any]:
+        """Search Cloudinary assets with cursor pagination and metadata projection.
+
+        Supports querying by expression, folder, tags, site_id, and inspection_id.
+        Gracefully falls back to Admin API resources if Search API is not provisioned.
+
+        Args:
+            expression: Custom Cloudinary Search API query expression.
+            folder: Filter assets within a folder hierarchy.
+            tags: Filter assets containing all specified tags.
+            site_id: Heritage site filter (checks folder and context).
+            inspection_id: Inspection session filter.
+            max_results: Maximum records per page (1 to 100).
+            next_cursor: Cloudinary pagination cursor from previous query.
+            sort_by_field: Field to sort by ('created_at', 'public_id').
+            sort_direction: 'asc' or 'desc'.
+
+        Returns:
+            Dict[str, Any]: Dictionary containing 'total_count', 'next_cursor', and 'resources'.
+
+        Raises:
+            CloudinaryConfigError: If credentials are unconfigured.
+            CloudinarySearchError: If the search operation fails.
+        """
+        self._configure_sdk()
+
+        import re
+        import cloudinary.search
+        import cloudinary.api
+
+        bounded_limit = min(max(1, max_results), 100)
+
+        # Build expression if not directly provided
+        query_expr = expression
+        if not query_expr:
+            terms = []
+            target_folder = folder or settings.cloudinary_folder
+            if site_id:
+                clean_site = re.sub(r"[^a-zA-Z0-9_\-]", "", site_id)
+                terms.append(f'folder:"{target_folder}/{clean_site}*"')
+            elif folder:
+                terms.append(f'folder:"{folder}*"')
+            else:
+                terms.append(f'folder:"{target_folder}*"')
+
+            if inspection_id:
+                clean_insp = re.sub(r"[^a-zA-Z0-9_\-]", "", inspection_id)
+                terms.append(f'(context.inspection_id="{clean_insp}" OR tags="{clean_insp}" OR public_id:*{clean_insp}*)')
+
+            if tags:
+                for t in tags:
+                    clean_tag = re.sub(r"[^a-zA-Z0-9_\-]", "", t)
+                    terms.append(f'tags="{clean_tag}"')
+
+            query_expr = " AND ".join(terms) if terms else f'folder:"{target_folder}*"'
+
+        try:
+            search_query = (
+                cloudinary.search.Search()
+                .expression(query_expr)
+                .max_results(bounded_limit)
+                .sort_by(sort_by_field, sort_direction)
+                .with_field("context")
+                .with_field("tags")
+            )
+            if next_cursor:
+                search_query = search_query.next_cursor(next_cursor)
+
+            raw_res = search_query.execute()
+
+            resources = []
+            for item in raw_res.get("resources", []):
+                pub_id = item.get("public_id", "")
+                fmt = item.get("format", "jpg")
+                item_context = item.get("context", {}) or {}
+                item_site_id = item_context.get("site_id")
+                item_insp_id = item_context.get("inspection_id")
+                if not item_site_id and "/" in pub_id:
+                    parts = pub_id.split("/")
+                    if len(parts) >= 4 and parts[0] == "jaldrishti":
+                        item_site_id = parts[2]
+                        if not item_insp_id:
+                            item_insp_id = parts[3]
+
+                resources.append({
+                    "public_id": pub_id,
+                    "asset_id": item.get("asset_id"),
+                    "format": fmt,
+                    "width": item.get("width", 0),
+                    "height": item.get("height", 0),
+                    "bytes": item.get("bytes", 0),
+                    "created_at": item.get("created_at", ""),
+                    "secure_url": item.get("secure_url") or self.build_original_url(pub_id, fmt),
+                    "preview_url": self.build_preview_url(pub_id, fmt),
+                    "thumbnail_url": self.build_thumbnail_url(pub_id, fmt),
+                    "folder": item.get("folder"),
+                    "site_id": item_site_id,
+                    "inspection_id": item_insp_id,
+                    "tags": item.get("tags", []),
+                })
+
+            return {
+                "total_count": raw_res.get("total_count", len(resources)),
+                "next_cursor": raw_res.get("next_cursor"),
+                "resources": resources,
+            }
+
+        except Exception as search_err:
+            logger.warning("Cloudinary Search API failed, attempting fallback to Admin API: %s", search_err)
+            try:
+                prefix = folder or settings.cloudinary_folder
+                admin_opts: Dict[str, Any] = {
+                    "type": "upload",
+                    "prefix": prefix,
+                    "max_results": bounded_limit,
+                }
+                if next_cursor:
+                    admin_opts["next_cursor"] = next_cursor
+
+                admin_res = cloudinary.api.resources(**admin_opts)
+                resources = []
+                for item in admin_res.get("resources", []):
+                    pub_id = item.get("public_id", "")
+                    fmt = item.get("format", "jpg")
+                    resources.append({
+                        "public_id": pub_id,
+                        "asset_id": item.get("asset_id"),
+                        "format": fmt,
+                        "width": item.get("width", 0),
+                        "height": item.get("height", 0),
+                        "bytes": item.get("bytes", 0),
+                        "created_at": item.get("created_at", ""),
+                        "secure_url": item.get("secure_url") or self.build_original_url(pub_id, fmt),
+                        "preview_url": self.build_preview_url(pub_id, fmt),
+                        "thumbnail_url": self.build_thumbnail_url(pub_id, fmt),
+                        "folder": prefix,
+                        "site_id": site_id,
+                        "inspection_id": inspection_id,
+                        "tags": item.get("tags", []),
+                    })
+                return {
+                    "total_count": len(resources),
+                    "next_cursor": admin_res.get("next_cursor"),
+                    "resources": resources,
+                }
+            except Exception as e:
+                err_msg = str(e)
+                if settings.cloudinary_api_secret and settings.cloudinary_api_secret in err_msg:
+                    err_msg = err_msg.replace(settings.cloudinary_api_secret, "[MASKED]")
+                logger.error("Cloudinary asset search failed: %s", err_msg)
+                raise CloudinarySearchError(f"Cloudinary search failed: {type(e).__name__}") from e
+
+    def fetch_original_image_bytes(self, secure_url_or_public_id: str) -> Optional[bytes]:
+        """Safely fetch uncompressed original image bytes for computer vision inference.
+
+        Args:
+            secure_url_or_public_id: Original secure delivery URL or public ID.
+
+        Returns:
+            Optional[bytes]: Raw downloaded bytes, or None if unavailable or network failure.
+        """
+        import urllib.request
+        import urllib.error
+
+        if not secure_url_or_public_id:
+            return None
+
+        url = secure_url_or_public_id
+        if not url.startswith("http://") and not url.startswith("https://"):
+            url = self.build_original_url(secure_url_or_public_id)
+
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "JalDrishti-AI-Inference/0.1.0"},
+            )
+            with urllib.request.urlopen(req, timeout=10) as response:
+                if response.status == 200:
+                    data = response.read()
+                    if data:
+                        logger.info("Successfully fetched %d original image bytes for inference.", len(data))
+                        return data
+            return None
+        except Exception as e:
+            logger.warning("Could not fetch original image bytes from %s: %s", url, type(e).__name__)
+            return None
 
 
 cloudinary_service = CloudinaryService()

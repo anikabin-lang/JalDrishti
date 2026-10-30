@@ -133,9 +133,18 @@ export const UploadPage: React.FC<UploadPageProps> = ({ onComplete, onRouteChang
     setStorage({ status: 'active', progress: 0 });
     setAnalysis({ status: 'pending' });
     try {
+      const derivedSiteId = structureName.trim()
+        ? structureName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+        : undefined;
+
       const image = await uploadInspectionImage(
         selected.file,
-        { structureType, structureName: structureName.trim() || undefined, notes: notes.trim() || undefined },
+        {
+          structureType,
+          structureName: structureName.trim() || undefined,
+          siteId: derivedSiteId,
+          notes: notes.trim() || undefined,
+        },
         (fraction) => setStorage({ status: 'active', progress: fraction }),
       );
       setStored(image);

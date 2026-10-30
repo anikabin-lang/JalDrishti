@@ -204,7 +204,7 @@ export interface AnalysisResultContract {
 /**
  * Frontend Navigation & Application State Types
  */
-export type AppRoute = '/' | '/upload' | '/analysis' | '/knowledge' | '/report';
+export type AppRoute = '/' | '/upload' | '/analysis' | '/knowledge' | '/report' | '/gallery';
 
 /**
  * Mirrors contracts/image_upload_result.schema.json (POST /images/upload).
@@ -213,14 +213,84 @@ export type AppRoute = '/' | '/upload' | '/analysis' | '/knowledge' | '/report';
 export interface ImageUploadResult {
   image_id: string;
   inspection_id?: string | null;
+  site_id?: string | null;
   status: 'uploaded' | 'processing' | 'ready' | 'failed' | string;
   preview_url: string;
+  thumbnail_url?: string | null;
   original_url?: string | null;
   format: string;
   width: number;
   height: number;
   bytes: number;
   created_at: string;
+  structure_type?: string | null;
+  original_filename?: string | null;
+}
+
+export interface HeritageImageSummary {
+  image_id: string;
+  site_id?: string | null;
+  inspection_id?: string | null;
+  public_id: string;
+  asset_id?: string | null;
+  format: string;
+  width: number;
+  height: number;
+  bytes: number;
+  created_at: string;
+  status: string;
+  structure_type?: string | null;
+  original_filename?: string | null;
+  preview_url: string;
+  thumbnail_url: string;
+  original_url: string;
+}
+
+export interface PaginatedImagesResponse {
+  total: number;
+  limit: number;
+  offset: number;
+  site_id?: string | null;
+  inspection_id?: string | null;
+  images: HeritageImageSummary[];
+}
+
+export interface CloudinaryAssetItem {
+  public_id: string;
+  asset_id?: string | null;
+  format: string;
+  width: number;
+  height: number;
+  bytes: number;
+  created_at: string;
+  secure_url: string;
+  preview_url: string;
+  thumbnail_url: string;
+  folder?: string | null;
+  site_id?: string | null;
+  inspection_id?: string | null;
+  tags?: string[];
+}
+
+export interface CloudinarySearchResponse {
+  total_count: number;
+  next_cursor?: string | null;
+  resources: CloudinaryAssetItem[];
+}
+
+export interface SiteSummary {
+  site_id: string;
+  site_name: string;
+  structure_type?: string | null;
+  total_images: number;
+  total_inspections: number;
+  latest_upload?: string | null;
+  cover_thumbnail_url?: string | null;
+}
+
+export interface SiteListResponse {
+  total_sites: number;
+  sites: SiteSummary[];
 }
 
 /**

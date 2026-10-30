@@ -11,9 +11,12 @@
 import {
   AnalysisRequestPayload,
   AnalysisResultContract,
+  CloudinarySearchResponse,
   ImageUploadResult,
   KnowledgeSource,
   MaterialCompatibilityContract,
+  PaginatedImagesResponse,
+  SiteListResponse,
   StructureKnowledgeRecord,
   StructureTypology,
 } from '../types';
@@ -126,6 +129,7 @@ export interface UploadMetadata {
   structureName?: string;
   notes?: string;
   inspectionId?: string;
+  siteId?: string;
 }
 
 /**
@@ -144,6 +148,7 @@ export function uploadInspectionImage(
   if (meta.structureName) formData.append('structure_name', meta.structureName);
   if (meta.notes) formData.append('notes', meta.notes);
   if (meta.inspectionId) formData.append('inspection_id', meta.inspectionId);
+  if (meta.siteId) formData.append('site_id', meta.siteId);
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -176,6 +181,55 @@ export function uploadInspectionImage(
 /** `DELETE /images/{image_id}` — removes the Cloudinary asset and its metadata record. */
 export function deleteInspectionImage(imageId: string): Promise<{ status: string; detail: string }> {
   return request(`/images/${encodeURIComponent(imageId)}`, { method: 'DELETE' });
+}
+
+export interface GalleryQueryParams {
+  site_id?: string;
+  inspection_id?: string;
+  structure_type?: string;
+  limit?: number;
+  offset?: number;
+}
+
+/** `GET /images` — retrieves paginated image records with filtering. */
+export function fetchGalleryImages(params: GalleryQueryParams = {}): Promise<PaginatedImagesResponse> {
+  const query = new URLSearchParams();
+  if (params.site_id) query.append('site_id', params.site_id);
+  if (params.inspection_id) query.append('inspection_id', params.inspection_id);
+  if (params.structure_type) query.append('structure_type', params.structure_type);
+  if (params.limit !== undefined) query.append('limit', String(params.limit));
+  if (params.offset !== undefined) query.append('offset', String(params.offset));
+  const queryString = query.toString();
+  return request<PaginatedImagesResponse>(`/images${queryString ? `?${queryString}` : ''}`);
+}
+
+/** `GET /sites` — retrieves aggregated heritage sites and photo counts. */
+export function fetchSites(): Promise<SiteListResponse> {
+  return request<SiteListResponse>('/sites');
+}
+
+export interface CloudSearchQueryParams {
+  query?: string;
+  site_id?: string;
+  inspection_id?: string;
+  folder?: string;
+  tag?: string;
+  max_results?: number;
+  next_cursor?: string;
+}
+
+/** `GET /images/cloud-search` — performs live Search API queries directly on Cloudinary. */
+export function searchCloudinaryAssets(params: CloudSearchQueryParams = {}): Promise<CloudinarySearchResponse> {
+  const query = new URLSearchParams();
+  if (params.query) query.append('query', params.query);
+  if (params.site_id) query.append('site_id', params.site_id);
+  if (params.inspection_id) query.append('inspection_id', params.inspection_id);
+  if (params.folder) query.append('folder', params.folder);
+  if (params.tag) query.append('tag', params.tag);
+  if (params.max_results !== undefined) query.append('max_results', String(params.max_results));
+  if (params.next_cursor) query.append('next_cursor', params.next_cursor);
+  const queryString = query.toString();
+  return request<CloudinarySearchResponse>(`/images/cloud-search${queryString ? `?${queryString}` : ''}`);
 }
 
 /**

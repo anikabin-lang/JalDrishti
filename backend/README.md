@@ -185,27 +185,106 @@ curl http://127.0.0.1:8000/images/img_f47ac10b-58cc-4372-a567-0e02b2c3d479
 
 ---
 
-### D. List Inspection Images (`GET /inspections/{inspection_id}/images`)
+### E. List Stored Images (`GET /images`)
+
+- **Method:** `GET`
+- **Status Code:** `200 OK`
+- **Query Parameters:**
+  - `site_id` *(optional, string)*: Filter by heritage site identifier
+  - `inspection_id` *(optional, string)*: Filter by inspection session
+  - `structure_type` *(optional, string)*: Filter by typology (`baoli`, `kund`, `vav`, etc.)
+  - `limit` *(optional, int, default 20, max 100)*: Page size
+  - `offset` *(optional, int, default 0)*: Number of records to skip
+- **Response:**
+```json
+{
+  "total": 42,
+  "limit": 20,
+  "offset": 0,
+  "site_id": "agrasen_ki_baoli",
+  "inspection_id": null,
+  "images": [
+    {
+      "image_id": "img_f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "site_id": "agrasen_ki_baoli",
+      "inspection_id": "insp_delhi_2026_01",
+      "public_id": "jaldrishti/inspections/agrasen_ki_baoli/insp_delhi_2026_01/img_f47ac10b...",
+      "asset_id": "asset_12345",
+      "format": "jpeg",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 245120,
+      "created_at": "2026-10-19T07:15:00.123456+00:00",
+      "status": "uploaded",
+      "structure_type": "baoli",
+      "original_filename": "survey_agrasen_01.jpg",
+      "preview_url": "https://res.cloudinary.com/.../c_limit,w_800,q_auto,f_auto/...",
+      "thumbnail_url": "https://res.cloudinary.com/.../c_fill,h_300,w_300,q_auto,f_auto/...",
+      "original_url": "https://res.cloudinary.com/.../image/upload/..."
+    }
+  ]
+}
+```
+
+---
+
+### F. Live Cloudinary Asset Search (`GET /images/cloud-search`)
+
+- **Method:** `GET`
+- **Status Code:** `200 OK`
+- **Query Parameters:**
+  - `query` *(optional, string)*: Custom Cloudinary search expression or keywords
+  - `site_id` *(optional, string)*: Filter by site
+  - `inspection_id` *(optional, string)*: Filter by inspection session
+  - `folder` *(optional, string)*: Target folder path
+  - `tag` *(optional, string)*: Tag filter
+  - `max_results` *(optional, int, default 20, max 100)*: Asset limit
+  - `next_cursor` *(optional, string)*: Cursor for pagination
+- **Response:**
+```json
+{
+  "total_count": 85,
+  "next_cursor": "cursor_token_next_page",
+  "resources": [
+    {
+      "public_id": "jaldrishti/inspections/site_chand/insp_9/img_1",
+      "asset_id": "asset_search_001",
+      "format": "jpg",
+      "width": 1280,
+      "height": 960,
+      "bytes": 524000,
+      "created_at": "2026-10-20T10:00:00Z",
+      "secure_url": "https://res.cloudinary.com/test-cloud/image/upload/v1/...",
+      "preview_url": "https://res.cloudinary.com/.../c_limit,w_800,q_auto,f_auto/...",
+      "thumbnail_url": "https://res.cloudinary.com/.../c_fill,h_300,w_300,q_auto,f_auto/...",
+      "folder": "jaldrishti/inspections/site_chand/insp_9",
+      "site_id": "site_chand",
+      "inspection_id": "insp_9",
+      "tags": ["jaldrishti", "baoli", "site:site_chand"]
+    }
+  ]
+}
+```
+
+---
+
+### G. List Registered Heritage Sites (`GET /sites`)
 
 - **Method:** `GET`
 - **Status Code:** `200 OK`
 - **Response:**
 ```json
 {
-  "inspection_id": "insp_delhi_2026_01",
-  "total": 1,
-  "images": [
+  "total_sites": 3,
+  "sites": [
     {
-      "image_id": "img_f47ac10b-58cc-4372-a567-0e02b2c3d479",
-      "inspection_id": "insp_delhi_2026_01",
-      "status": "uploaded",
-      "preview_url": "https://res.cloudinary.com/.../c_limit,w_800,q_auto,f_auto/...",
-      "original_url": "https://res.cloudinary.com/.../image/upload/...",
-      "format": "jpeg",
-      "width": 1920,
-      "height": 1080,
-      "bytes": 245120,
-      "created_at": "2026-10-19T07:15:00.123456+00:00"
+      "site_id": "agrasen_ki_baoli",
+      "site_name": "Agrasen Ki Baoli",
+      "structure_type": "baoli",
+      "total_images": 24,
+      "total_inspections": 4,
+      "latest_upload": "2026-10-25T14:20:00+00:00",
+      "cover_thumbnail_url": "https://res.cloudinary.com/.../c_fill,h_300,w_300,q_auto,f_auto/..."
     }
   ]
 }
@@ -216,9 +295,10 @@ curl http://127.0.0.1:8000/images/img_f47ac10b-58cc-4372-a567-0e02b2c3d479
 ## 4. Subsystem Integration Contracts
 
 ### A. Integration with Anika Jain (Frontend / PWA)
-1. **Direct Upload:** When a surveyor snaps or selects a photo, POST it to `/images/upload` using `FormData.append('file', photoBlob)` or `FormData.append('images', photoBlob)`.
-2. **Displaying Previews:** Use `response.preview_url` directly in UI image tags. It delivers an auto-compressed, auto-format (`f_auto,q_auto`) responsive WebP/AVIF thumbnail capped at 800px width.
-3. **Triggering Analysis:** Call `POST /analyze` with the returned `image_id`:
+1. **Direct Upload:** When a surveyor snaps or selects a photo, POST it to `/images/upload` using `FormData.append('file', photoBlob)`. Pass `site_id` (e.g. `agrasen_ki_baoli`) to automatically organize assets within `jaldrishti/inspections/<site_id>/<inspection_id>/<image_id>`.
+2. **Displaying Previews & Thumbnails:** Use `response.preview_url` for responsive headers and full previews, and `response.thumbnail_url` (`c_fill,w_300,h_300,q_auto,f_auto`) for fast grid card rendering in the Heritage Image Gallery (`/gallery`).
+3. **Heritage Gallery Exploration (`05 / Gallery`):** Query stored photos through `GET /images` with site, inspection, or typology filters, or execute real-time queries across Cloudinary with `GET /images/cloud-search`.
+4. **Triggering Analysis:** Call `POST /analyze` with the returned `image_id`:
    ```json
    {
      "image_id": "img_f47ac10b-58cc-4372-a567-0e02b2c3d479",
@@ -231,7 +311,7 @@ curl http://127.0.0.1:8000/images/img_f47ac10b-58cc-4372-a567-0e02b2c3d479
 
 ### B. Integration with Krish (Computer Vision / AI)
 1. **Isolation from Storage Provider:** Model inference code (`vision/`) contains **zero Cloudinary SDK imports**.
-2. **Raw Pixel Integrity:** Vision models receive uncorrupted raw bytes (`image_bytes: bytes`) or local file paths. Lossy preview compression is never applied to model input.
+2. **Raw Pixel Integrity:** Vision models receive uncorrupted raw bytes (`image_bytes: bytes`) or local file paths. Lossy preview compression is never applied to model input. When an `image_id` is supplied without re-uploading file bytes, the backend orchestrator downloads the full original asset (`fetch_original_image_bytes`) directly from Cloudinary's secure original URL, preserving native photographic resolution for Faster R-CNN and YOLO inference.
 3. **Dimensions & Normalization:** Spatial dimensions are extracted deterministically and passed to the model service boundary (`vision_service.analyze_image`).
 
 ### C. Integration with Kirti Antil (Engineering & IKS)

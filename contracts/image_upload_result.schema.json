@@ -23,6 +23,10 @@
       "type": ["string", "null"],
       "description": "Associated inspection session identifier."
     },
+    "site_id": {
+      "type": ["string", "null"],
+      "description": "Associated heritage site identifier for hierarchical asset organization."
+    },
     "status": {
       "type": "string",
       "enum": ["uploaded", "processing", "ready", "failed"],
@@ -31,6 +35,10 @@
     "preview_url": {
       "type": "string",
       "description": "Optimized responsive preview URL for frontend visualization."
+    },
+    "thumbnail_url": {
+      "type": ["string", "null"],
+      "description": "Optimized square thumbnail URL for card and grid displays."
     },
     "original_url": {
       "type": ["string", "null"],

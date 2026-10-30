@@ -30,10 +30,14 @@ from backend.app.core.config import settings
 from backend.app.db.image_repository import MetadataPersistenceError, image_repository
 from backend.app.main import app
 from backend.app.schemas.image import (
+    CloudinarySearchResponse,
     ImageDeleteResponse,
     ImageUploadResponse,
     InspectionImagesListResponse,
+    PaginatedImagesResponse,
+    SiteListResponse,
 )
+from backend.app.services.cloudinary_service import CloudinarySearchError, cloudinary_service
 from backend.app.utils.contracts import validate_model_against_contract
 
 client = TestClient(app)
@@ -436,3 +440,255 @@ def test_analyze_endpoint_integrates_with_image_id():
     # Spatial dimensions were automatically resolved from image record
     assert analysis_data["vision"]["image_dimensions"]["width_pixels"] == 1600
     assert analysis_data["vision"]["image_dimensions"]["height_pixels"] == 1200
+
+
+# -----------------------------------------------------------------------------
+# 13-17. Advanced Asset Management, Search, Hierarchy & Inference Integration
+# -----------------------------------------------------------------------------
+
+
+def test_successful_upload_with_site_id_hierarchy():
+    """Verify upload organized hierarchically by site_id and inspection_id."""
+    img_bytes = create_sample_image(format_name="JPEG", width=800, height=600)
+
+    with patch(
+        "cloudinary.uploader.upload",
+        side_effect=lambda file_stream, **kwargs: mock_cloudinary_upload_success(
+            public_id=kwargs.get("public_id", "fallback_id"),
+            format_str="jpeg",
+            width=800,
+            height=600,
+        ),
+    ) as mock_upload:
+        response = client.post(
+            "/images/upload",
+            files={"file": ("ranikivav_tier3.jpg", img_bytes, "image/jpeg")},
+            data={
+                "site_id": "site_gujarat_rani_ki_vav",
+                "inspection_id": "insp_patna_2026",
+                "structure_type": "vav",
+                "structure_name": "Rani ki Vav",
+            },
+        )
+
+    assert response.status_code == 201
+    data = response.json()
+    model = ImageUploadResponse.model_validate(data)
+    assert model.site_id == "site_gujarat_rani_ki_vav"
+    assert model.inspection_id == "insp_patna_2026"
+    assert model.thumbnail_url is not None
+    assert "c_fill" in model.thumbnail_url
+    assert "300" in model.thumbnail_url
+
+    # Verify upload was called with hierarchical path
+    called_kwargs = mock_upload.call_args[1]
+    expected_prefix = "jaldrishti/inspections/site_gujarat_rani_ki_vav/insp_patna_2026/"
+    assert called_kwargs["public_id"].startswith(expected_prefix)
+    assert "site:site_gujarat_rani_ki_vav" in called_kwargs["tags"]
+    assert called_kwargs["context"]["site_id"] == "site_gujarat_rani_ki_vav"
+
+    # Confirm repository persistence
+    record = image_repository.get_by_id(model.image_id)
+    assert record is not None
+    assert record.site_id == "site_gujarat_rani_ki_vav"
+    assert record.thumbnail_url is not None
+
+
+def test_list_images_with_filtering_and_pagination():
+    """Verify GET /images filters by site, inspection, typology and supports pagination."""
+    img_bytes = create_sample_image()
+
+    with patch(
+        "cloudinary.uploader.upload",
+        side_effect=lambda file_stream, **kwargs: mock_cloudinary_upload_success(
+            public_id=kwargs.get("public_id", "fallback_id"),
+        ),
+    ):
+        client.post(
+            "/images/upload",
+            files={"file": ("site_a_1.jpg", img_bytes, "image/jpeg")},
+            data={"site_id": "site_alpha", "inspection_id": "insp_1", "structure_type": "baoli"},
+        )
+        client.post(
+            "/images/upload",
+            files={"file": ("site_a_2.jpg", img_bytes, "image/jpeg")},
+            data={"site_id": "site_alpha", "inspection_id": "insp_2", "structure_type": "baoli"},
+        )
+        client.post(
+            "/images/upload",
+            files={"file": ("site_b_1.jpg", img_bytes, "image/jpeg")},
+            data={"site_id": "site_beta", "inspection_id": "insp_3", "structure_type": "kund"},
+        )
+
+    # 1. Query without filters
+    all_resp = client.get("/images?limit=10&offset=0")
+    assert all_resp.status_code == 200
+    all_data = PaginatedImagesResponse.model_validate(all_resp.json())
+    assert all_data.total == 3
+    assert len(all_data.images) == 3
+
+    # 2. Filter by site_id
+    site_a_resp = client.get("/images?site_id=site_alpha")
+    assert site_a_resp.status_code == 200
+    site_a_data = PaginatedImagesResponse.model_validate(site_a_resp.json())
+    assert site_a_data.total == 2
+    assert all(img.site_id == "site_alpha" for img in site_a_data.images)
+
+    # 3. Filter by structure_type
+    kund_resp = client.get("/images?structure_type=kund")
+    assert kund_resp.status_code == 200
+    kund_data = PaginatedImagesResponse.model_validate(kund_resp.json())
+    assert kund_data.total == 1
+    assert kund_data.images[0].site_id == "site_beta"
+
+    # 4. Pagination
+    page_resp = client.get("/images?limit=1&offset=1")
+    assert page_resp.status_code == 200
+    page_data = PaginatedImagesResponse.model_validate(page_resp.json())
+    assert page_data.total == 3
+    assert len(page_data.images) == 1
+
+
+def test_cloudinary_cloud_search_with_mocked_search_api():
+    """Verify GET /images/cloud-search calls Cloudinary Search API and returns cursor pagination."""
+    mock_search_result = {
+        "total_count": 25,
+        "next_cursor": "cursor_token_page_2",
+        "resources": [
+            {
+                "public_id": "jaldrishti/inspections/site_chand/insp_9/img_1",
+                "asset_id": "asset_search_001",
+                "format": "jpg",
+                "width": 1280,
+                "height": 960,
+                "bytes": 524000,
+                "created_at": "2026-10-20T10:00:00Z",
+                "secure_url": "https://res.cloudinary.com/test-cloud/image/upload/v1/jaldrishti/inspections/site_chand/insp_9/img_1.jpg",
+                "context": {"site_id": "site_chand", "inspection_id": "insp_9"},
+                "tags": ["jaldrishti", "baoli"],
+            }
+        ],
+    }
+
+    mock_search_instance = MagicMock()
+    mock_search_instance.expression.return_value = mock_search_instance
+    mock_search_instance.max_results.return_value = mock_search_instance
+    mock_search_instance.sort_by.return_value = mock_search_instance
+    mock_search_instance.with_field.return_value = mock_search_instance
+    mock_search_instance.next_cursor.return_value = mock_search_instance
+    mock_search_instance.execute.return_value = mock_search_result
+
+    with patch("cloudinary.search.Search", return_value=mock_search_instance):
+        resp = client.get("/images/cloud-search?site_id=site_chand&max_results=10")
+
+    assert resp.status_code == 200
+    search_data = CloudinarySearchResponse.model_validate(resp.json())
+    assert search_data.total_count == 25
+    assert search_data.next_cursor == "cursor_token_page_2"
+    assert len(search_data.resources) == 1
+    assert search_data.resources[0].public_id == "jaldrishti/inspections/site_chand/insp_9/img_1"
+    assert search_data.resources[0].site_id == "site_chand"
+    assert search_data.resources[0].thumbnail_url is not None
+
+
+def test_cloudinary_cloud_search_provider_failure():
+    """Verify GET /images/cloud-search surfaces HTTP 502 with sanitized message when provider fails."""
+    mock_search_instance = MagicMock()
+    mock_search_instance.expression.return_value = mock_search_instance
+    mock_search_instance.max_results.return_value = mock_search_instance
+    mock_search_instance.sort_by.return_value = mock_search_instance
+    mock_search_instance.with_field.return_value = mock_search_instance
+    mock_search_instance.execute.side_effect = Exception("Cloudinary search service rate limit exceeded")
+
+    with patch("cloudinary.search.Search", return_value=mock_search_instance), patch(
+        "cloudinary.api.resources", side_effect=Exception("Admin API rate limit exceeded")
+    ):
+        resp = client.get("/images/cloud-search?site_id=error_site")
+
+    assert resp.status_code == 502
+    assert "Cloudinary asset search failed" in resp.json()["detail"]
+
+
+def test_cloudinary_cloud_search_unconfigured(monkeypatch: pytest.MonkeyPatch):
+    """Verify GET /images/cloud-search returns HTTP 503 when credentials are unconfigured."""
+    monkeypatch.setattr(settings, "cloudinary_cloud_name", None)
+    resp = client.get("/images/cloud-search")
+    assert resp.status_code == 503
+    assert "not configured" in resp.json()["detail"].lower()
+
+
+def test_list_sites_summary():
+    """Verify GET /sites returns aggregated metrics across heritage monuments."""
+    img_bytes = create_sample_image()
+
+    with patch(
+        "cloudinary.uploader.upload",
+        side_effect=lambda file_stream, **kwargs: mock_cloudinary_upload_success(
+            public_id=kwargs.get("public_id", "fallback_id"),
+        ),
+    ):
+        client.post(
+            "/images/upload",
+            files={"file": ("img1.jpg", img_bytes, "image/jpeg")},
+            data={"site_id": "agrasen_ki_baoli", "structure_type": "baoli"},
+        )
+        client.post(
+            "/images/upload",
+            files={"file": ("img2.jpg", img_bytes, "image/jpeg")},
+            data={"site_id": "agrasen_ki_baoli", "structure_type": "baoli"},
+        )
+        client.post(
+            "/images/upload",
+            files={"file": ("img3.jpg", img_bytes, "image/jpeg")},
+            data={"site_id": "chand_baori", "structure_type": "bawari"},
+        )
+
+    sites_resp = client.get("/sites")
+    assert sites_resp.status_code == 200
+    sites_data = SiteListResponse.model_validate(sites_resp.json())
+    assert sites_data.total_sites == 2
+
+    agrasen = next(s for s in sites_data.sites if s.site_id == "agrasen_ki_baoli")
+    assert agrasen.total_images == 2
+    assert agrasen.site_name == "Agrasen Ki Baoli"
+    assert agrasen.structure_type == "baoli"
+
+
+def test_analyze_fetches_original_image_bytes_for_vision_inference():
+    """Verify POST /analyze retrieves original image bytes via CloudinaryService for defect inference."""
+    img_bytes = create_sample_image(width=640, height=480)
+
+    with patch(
+        "cloudinary.uploader.upload",
+        return_value=mock_cloudinary_upload_success(
+            public_id="jaldrishti/inspections/site_test/insp_1/img_orig",
+            width=640,
+            height=480,
+        ),
+    ):
+        upload_resp = client.post(
+            "/images/upload",
+            files={"file": ("test_wall.jpg", img_bytes, "image/jpeg")},
+            data={"site_id": "site_test", "structure_type": "baoli"},
+        )
+    image_id = upload_resp.json()["image_id"]
+
+    # Mock fetch_original_image_bytes to return the raw uncompressed bytes
+    with patch.object(
+        cloudinary_service,
+        "fetch_original_image_bytes",
+        return_value=img_bytes,
+    ) as mock_fetch:
+        analyze_resp = client.post(
+            "/analyze",
+            json={
+                "image_id": image_id,
+                "structure_type": "baoli",
+                "name": "Test Baoli",
+            },
+        )
+
+    assert analyze_resp.status_code == 200
+    mock_fetch.assert_called_once()
+    # Ensure URL fetched was the original secure URL
+    assert "jaldrishti/inspections/site_test/insp_1/img_orig" in mock_fetch.call_args[0][0]

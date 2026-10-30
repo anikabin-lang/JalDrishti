@@ -12,6 +12,7 @@ export const APP_NAV_ITEMS: NavItem[] = [
   { route: '/analysis', label: 'Findings', index: '02' },
   { route: '/report', label: 'Report', index: '03' },
   { route: '/knowledge', label: 'Knowledge', index: '04' },
+  { route: '/gallery', label: 'Gallery', index: '05' },
 ];
 
 export interface NavigationProps {
