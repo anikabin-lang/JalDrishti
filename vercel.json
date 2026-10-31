@@ -6,63 +6,63 @@
   "rewrites": [
     {
       "source": "/health",
-      "destination": "/api/index.py"
+      "destination": "https://jaldrishti.onrender.com/health"
     },
     {
       "source": "/analyze",
-      "destination": "/api/index.py"
+      "destination": "https://jaldrishti.onrender.com/analyze"
     },
     {
       "source": "/engineering",
-      "destination": "/api/index.py"
+      "destination": "https://jaldrishti.onrender.com/engineering"
     },
     {
       "source": "/material-compatibility",
-      "destination": "/api/index.py"
+      "destination": "https://jaldrishti.onrender.com/material-compatibility"
     },
     {
       "source": "/restore",
-      "destination": "/api/index.py"
+      "destination": "https://jaldrishti.onrender.com/restore"
     },
     {
       "source": "/knowledge/:path*",
-      "destination": "/api/index.py"
+      "destination": "https://jaldrishti.onrender.com/knowledge/:path*"
     },
     {
       "source": "/vision/:path*",
-      "destination": "/api/index.py"
+      "destination": "https://jaldrishti.onrender.com/vision/:path*"
     },
     {
       "source": "/images/:path*",
-      "destination": "/api/index.py"
+      "destination": "https://jaldrishti.onrender.com/images/:path*"
     },
     {
       "source": "/images",
-      "destination": "/api/index.py"
+      "destination": "https://jaldrishti.onrender.com/images"
     },
     {
       "source": "/sites",
-      "destination": "/api/index.py"
+      "destination": "https://jaldrishti.onrender.com/sites"
     },
     {
       "source": "/inspections/:path*",
-      "destination": "/api/index.py"
+      "destination": "https://jaldrishti.onrender.com/inspections/:path*"
     },
     {
       "source": "/structures",
-      "destination": "/api/index.py"
+      "destination": "https://jaldrishti.onrender.com/structures"
     },
     {
       "source": "/structures/:path*",
-      "destination": "/api/index.py"
+      "destination": "https://jaldrishti.onrender.com/structures/:path*"
     },
     {
       "source": "/preferences/:path*",
-      "destination": "/api/index.py"
+      "destination": "https://jaldrishti.onrender.com/preferences/:path*"
     },
     {
       "source": "/api/:path*",
-      "destination": "/api/index.py"
+      "destination": "https://jaldrishti.onrender.com/api/:path*"
     },
     {
       "source": "/((?!assets/|samples/|favicon\\.ico|manifest\\.json).*)",
