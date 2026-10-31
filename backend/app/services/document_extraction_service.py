@@ -22,8 +22,17 @@ class DocumentExtractionService:
     """Extracts metadata, past defect findings, and embedded photographs from historical inspection PDFs."""
 
     def __init__(self, storage_dir: Optional[str] = None) -> None:
-        self.storage_dir = Path(storage_dir or "data/extracted_documents")
-        self.storage_dir.mkdir(parents=True, exist_ok=True)
+        default_dir = (
+            "/tmp/extracted_documents"
+            if os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
+            else "data/extracted_documents"
+        )
+        self.storage_dir = Path(storage_dir or default_dir)
+        try:
+            self.storage_dir.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            self.storage_dir = Path("/tmp/extracted_documents")
+            self.storage_dir.mkdir(parents=True, exist_ok=True)
 
     def extract_from_pdf_bytes(
         self,

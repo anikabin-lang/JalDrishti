@@ -1,0 +1,41 @@
+.venv
+.venv/**
+.venv-vision
+.venv-vision/**
+venv
+env
+node_modules
+node_modules/**
+frontend/node_modules
+frontend/node_modules/**
+.git
+.git/**
+.pytest_cache
+.pytest_cache/**
+data
+data/**
+backups
+backups/**
+vision/datasets
+vision/datasets/**
+vision/outputs
+vision/outputs/**
+YTU-CrackIS
+YTU-CrackIS/**
+Historic_Place_Dataset
+Historic_Place_Dataset/**
+Historical Building Cracks
+Historical Building Cracks/**
+Crack Data-Darbhanga Fort
+Crack Data-Darbhanga Fort/**
+Darbhanga_Fort
+Darbhanga_Fort/**
+*.pt
+*.pth
+*.zip
+*.tar
+*.gz
+tests
+tests/**
+__pycache__
+__pycache__/**

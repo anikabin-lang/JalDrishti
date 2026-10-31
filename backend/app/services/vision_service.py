@@ -20,7 +20,10 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import cv2
+try:
+    import cv2
+except ImportError:
+    cv2 = None
 import numpy as np
 from PIL import Image
 
@@ -590,12 +593,14 @@ class VisionService:
                 sum_rgb = rgb_arr[:, :, 0] + rgb_arr[:, :, 1] + rgb_arr[:, :, 2] + 1e-5
                 norm_exg = exg / sum_rgb
 
-                # Chlorophyll HSV verification: green hue [35..85], saturation >= 45, brightness >= 40
-                img_cv = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
-                hsv = cv2.cvtColor(img_cv, cv2.COLOR_BGR2HSV)
-                green_hsv = (hsv[:, :, 0] >= 35) & (hsv[:, :, 0] <= 85) & (hsv[:, :, 1] >= 45) & (hsv[:, :, 2] >= 40)
-
-                veg_mask = (exg > 30.0) & (norm_exg > 0.15) & green_hsv
+                # Chlorophyll HSV verification if cv2 is available, otherwise normalized ExG
+                if cv2 is not None:
+                    img_cv = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+                    hsv = cv2.cvtColor(img_cv, cv2.COLOR_BGR2HSV)
+                    green_hsv = (hsv[:, :, 0] >= 35) & (hsv[:, :, 0] <= 85) & (hsv[:, :, 1] >= 45) & (hsv[:, :, 2] >= 40)
+                    veg_mask = (exg > 30.0) & (norm_exg > 0.15) & green_hsv
+                else:
+                    veg_mask = (exg > 30.0) & (norm_exg > 0.15)
                 veg_ratio = float(np.mean(veg_mask))
 
                 if veg_ratio > 0.02:
@@ -791,11 +796,13 @@ class VisionService:
             sum_rgb = rgb_arr[:, :, 0] + rgb_arr[:, :, 1] + rgb_arr[:, :, 2] + 1e-5
             norm_exg = exg / sum_rgb
 
-            img_cv = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
-            hsv = cv2.cvtColor(img_cv, cv2.COLOR_BGR2HSV)
-            green_hsv = (hsv[:, :, 0] >= 35) & (hsv[:, :, 0] <= 85) & (hsv[:, :, 1] >= 45) & (hsv[:, :, 2] >= 40)
-
-            veg_mask = (exg > 30.0) & (norm_exg > 0.15) & green_hsv
+            if cv2 is not None:
+                img_cv = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+                hsv = cv2.cvtColor(img_cv, cv2.COLOR_BGR2HSV)
+                green_hsv = (hsv[:, :, 0] >= 35) & (hsv[:, :, 0] <= 85) & (hsv[:, :, 1] >= 45) & (hsv[:, :, 2] >= 40)
+                veg_mask = (exg > 30.0) & (norm_exg > 0.15) & green_hsv
+            else:
+                veg_mask = (exg > 30.0) & (norm_exg > 0.15)
             veg_ratio = float(np.mean(veg_mask))
 
             if veg_ratio > 0.025:
