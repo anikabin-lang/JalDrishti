@@ -2,6 +2,7 @@ import React from 'react';
 import { AnalysisResultContract } from '../types';
 import { OriginKind, OriginTag } from './StatusBadge';
 import { listEngineeringMetrics, readRootCauses } from '../utils/analysis';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export interface ConservationChainProps {
   result: AnalysisResultContract;
@@ -26,6 +27,7 @@ interface Stage {
  * payload contains and declaring where each stage's output came from.
  */
 export const ConservationChain: React.FC<ConservationChainProps> = ({ result, onJump, isFixture = false, seeOrigin = 'model', className = '' }) => {
+  const { t } = useLanguage();
   const detections = result.vision.detections.length;
   const metrics = listEngineeringMetrics(result).length;
   const causes = readRootCauses(result).length;
@@ -34,28 +36,28 @@ export const ConservationChain: React.FC<ConservationChainProps> = ({ result, on
 
   const stages: Stage[] = [
     {
-      verb: 'See',
+      verb: t('chain.see', 'See'),
       sectionId: 'findings',
       origin: seeOrigin,
-      summary: detections === 0 ? 'No detections returned' : `${detections} detection${detections === 1 ? '' : 's'}`,
+      summary: detections === 0 ? t('chain.noDetections', 'No detections returned') : `${detections} ${t('chain.detections', 'detections')}`,
     },
     {
-      verb: 'Understand',
+      verb: t('chain.understand', 'Understand'),
       sectionId: 'causes',
       origin: 'rules',
-      summary: causes === 0 ? 'No probable causes inferred' : `${causes} probable cause${causes === 1 ? '' : 's'}`,
+      summary: causes === 0 ? t('chain.noCauses', 'No probable causes inferred') : `${causes} ${t('chain.probableCauses', 'probable causes')}`,
     },
     {
-      verb: 'Assess',
+      verb: t('chain.assess', 'Assess'),
       sectionId: 'assessment',
       origin: 'rules',
-      summary: `${metrics} score${metrics === 1 ? '' : 's'} · ${candidates} material${candidates === 1 ? '' : 's'} compared`,
+      summary: `${metrics} · ${candidates} ${t('chain.scoresCompared', 'scores · materials compared')}`,
     },
     {
-      verb: 'Revive',
+      verb: t('chain.revive', 'Revive'),
       sectionId: 'restoration',
       origin: 'expert',
-      summary: actions === 0 ? 'No actions returned' : `${actions} prioritised consideration${actions === 1 ? '' : 's'}`,
+      summary: actions === 0 ? t('chain.noActions', 'No actions returned') : `${actions} ${t('chain.prioritisedActions', 'prioritised considerations')}`,
     },
   ];
 

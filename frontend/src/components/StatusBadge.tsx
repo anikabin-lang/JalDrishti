@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export type BadgeVariant = 'neutral' | 'jade' | 'ochre' | 'danger' | 'laterite' | 'ink';
 
@@ -41,7 +42,16 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ label, variant = 'neut
  * Declares where a block of information came from, so model output, rule-based
  * engine output and items needing expert confirmation are never conflated.
  */
-export type OriginKind = 'model' | 'unverified' | 'rules' | 'knowledge' | 'expert' | 'user' | 'fixture';
+export type OriginKind =
+  | 'model'
+  | 'unverified'
+  | 'rules'
+  | 'knowledge'
+  | 'expert'
+  | 'user'
+  | 'fixture'
+  | 'rejected'
+  | 'uncertain';
 
 const ORIGIN: Record<OriginKind, { label: string; variant: BadgeVariant }> = {
   model: { label: 'Model output', variant: 'laterite' },
@@ -51,10 +61,15 @@ const ORIGIN: Record<OriginKind, { label: string; variant: BadgeVariant }> = {
   expert: { label: 'Requires expert verification', variant: 'ochre' },
   user: { label: 'Your input', variant: 'neutral' },
   fixture: { label: 'Development sample', variant: 'ochre' },
+  rejected: { label: 'Gate rejected (Non-Heritage)', variant: 'danger' },
+  uncertain: { label: 'Needs manual review', variant: 'ochre' },
 };
 
-export const OriginTag: React.FC<{ kind: OriginKind; className?: string }> = ({ kind, className }) => (
-  <StatusBadge label={ORIGIN[kind].label} variant={ORIGIN[kind].variant} dot className={className} />
-);
+export const OriginTag: React.FC<{ kind: OriginKind; className?: string }> = ({ kind, className }) => {
+  const { t } = useLanguage();
+  return (
+    <StatusBadge label={t('origin.' + kind, ORIGIN[kind].label)} variant={ORIGIN[kind].variant} dot className={className} />
+  );
+};
 
 export default StatusBadge;

@@ -124,3 +124,29 @@ class VisionResult(BaseModel):
     processing_metadata: Optional[ProcessingMetadata] = Field(
         default=None, description="Vision pipeline performance metadata"
     )
+    relevance_status: str = Field(
+        default="relevant",
+        description="Relevance classification status: 'relevant', 'uncertain', or 'irrelevant'",
+    )
+    relevance_confidence: float = Field(
+        default=1.0,
+        ge=0.0,
+        le=1.0,
+        description="Confidence that the image depicts heritage masonry",
+    )
+    quality_status: str = Field(
+        default="good",
+        description="Image quality status: 'good', 'blurred', or 'poor_lighting'",
+    )
+    rejection_reason: Optional[str] = Field(
+        default=None,
+        description="Reason for image rejection if marked irrelevant or unprocessable",
+    )
+    needs_manual_review: bool = Field(
+        default=False,
+        description="Whether this image requires expert manual review",
+    )
+    status_message: str = Field(
+        default="Analysis completed successfully.",
+        description="User-facing summary message describing detection or triage outcome",
+    )

@@ -1,6 +1,7 @@
 import React from 'react';
 import { SectionIndex } from './SectionIndex';
 import { StepwellSection } from './StepwellSection';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { AppRoute } from '../../types';
 
 type Navigate = (route: AppRoute) => void;
@@ -233,19 +234,54 @@ const FORMS = [
   },
 ];
 
-const RecordTag: React.FC<{ recorded: boolean }> = ({ recorded }) => (
-  <span className={`eyebrow inline-flex items-center gap-2 ${recorded ? 'text-jade-200' : 'text-stone-400'}`}>
-    <span
-      aria-hidden="true"
-      className={`h-1.5 w-1.5 rounded-full ${recorded ? 'bg-jade-300' : 'border border-stone-400 bg-transparent'}`}
-    />
-    {recorded ? 'Knowledge records today' : 'Within the intended scope'}
-  </span>
-);
+const RecordTag: React.FC<{ recorded: boolean }> = ({ recorded }) => {
+  const { t } = useLanguage();
+  return (
+    <span className={`eyebrow inline-flex items-center gap-2 ${recorded ? 'text-jade-200' : 'text-stone-400'}`}>
+      <span
+        aria-hidden="true"
+        className={`h-1.5 w-1.5 rounded-full ${recorded ? 'bg-jade-300' : 'border border-stone-400 bg-transparent'}`}
+      />
+      {recorded ? t('home.diversity.tagToday', 'Knowledge records today') : t('home.diversity.tagScope', 'Within the intended scope')}
+    </span>
+  );
+};
 
 /** S2 — A diverse water heritage. The descent's water veil resolves into this section. */
 export const DiversitySection: React.FC<{ id: string }> = ({ id }) => {
+  const { t } = useLanguage();
   const [featured, ...rest] = FORMS;
+
+  const formMeta: Record<string, { name: string; terms: string; body: string }> = {
+    stepwells: {
+      name: t('home.diversity.stepwells', 'Stepwells and baolis'),
+      terms: t('home.diversity.stepwellsTerms', 'Baoli · Bawari · Vav'),
+      body: t('home.diversity.stepwellsBody', 'Deep shafts lined in stone with one or more flights of descending stairs, built to reach seasonal groundwater through dry heat.'),
+    },
+    kunds: {
+      name: t('home.diversity.kunds', 'Stepped tanks'),
+      terms: t('home.diversity.kundsTerms', 'Kund · Stepped basin'),
+      body: t('home.diversity.kundsBody', 'Pyramidal tiers descending to water from all four sides, collecting rainfall from stone-paved catchments.'),
+    },
+    tanks: {
+      name: t('home.diversity.tanks', 'Masonry tanks and reservoirs'),
+      terms: t('home.diversity.tanksTerms', 'Hauz · Talaab · Tank'),
+      body: t('home.diversity.tanksBody', 'Open stone-lined sheets of water, often fed by seasonal streams, bunds or hillside runoff, holding water for settlements.'),
+    },
+    temple: {
+      name: t('home.diversity.temple', 'Temple tanks and pushkarnis'),
+      terms: t('home.diversity.templeTerms', 'Pushkarni · Kalyani · Teertham'),
+      body: t('home.diversity.templeBody', 'Sacred tanks engineered for ritual immersion, seasonal holding, and local aquifer replenishment around monumental temple complexes.'),
+    },
+    ponds: {
+      name: t('home.diversity.ponds', 'Ponds and regional systems'),
+      terms: t('home.diversity.pondsTerms', 'Johad · Pond · local terms'),
+      body: t('home.diversity.pondsBody', 'Earthen embankments, village ponds and other regional ways of catching, holding and sharing water, each shaped by local terrain and practice.'),
+    },
+  };
+
+  const featMeta = formMeta[featured.kind] || { name: featured.name, terms: featured.terms, body: featured.body };
+
   return (
     <section
       id={id}
@@ -256,16 +292,14 @@ export const DiversitySection: React.FC<{ id: string }> = ({ id }) => {
       <div className="mx-auto max-w-wide">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
           <div className="lg:col-span-4">
-            <SectionIndex label="A diverse water heritage" tone="light" />
+            <SectionIndex label={t('home.diversity.label', 'A diverse water heritage')} tone="light" />
           </div>
           <div className="lg:col-span-8">
             <h2 id={`${id}-title`} data-reveal="mask" className="max-w-[18ch] font-display text-display-lg font-medium">
-              One heritage. Many forms. Distinct local knowledge.
+              {t('home.diversity.title', 'One heritage. Many forms. Distinct local knowledge.')}
             </h2>
             <p data-reveal className="mt-8 max-w-[42rem] text-[1.0625rem] leading-relaxed text-stone-200">
-              Across India, traditional water structures take many forms. Stepwells, baolis, kunds, tanks, ponds, and
-              other regional systems respond to different landscapes, communities, materials, and relationships with
-              water. Understanding them requires attention to their individual context.
+              {t('home.diversity.lead', 'Across India, traditional water structures take many forms. Stepwells, baolis, kunds, tanks, ponds, and other regional systems respond to different landscapes, communities, materials, and relationships with water. Understanding them requires attention to their individual context.')}
             </p>
           </div>
         </div>
@@ -273,36 +307,37 @@ export const DiversitySection: React.FC<{ id: string }> = ({ id }) => {
         <div className="mt-20 grid grid-cols-1 gap-px bg-stone-50/15 lg:grid-cols-12">
           <article data-reveal className="bg-jade-900 py-10 lg:col-span-5 lg:py-12 lg:pr-12">
             <TypologyDrawing kind={featured.kind} className="h-auto w-full max-w-[28rem] text-stone-100" />
-            <p className="eyebrow mt-8 text-stone-400">{featured.terms}</p>
-            <h3 className="mt-3 font-display text-display-md font-medium">{featured.name}</h3>
-            <p className="mt-4 max-w-[34rem] text-[0.9375rem] leading-relaxed text-stone-300">{featured.body}</p>
+            <p className="eyebrow mt-8 text-stone-400">{featMeta.terms}</p>
+            <h3 className="mt-3 font-display text-display-md font-medium">{featMeta.name}</h3>
+            <p className="mt-4 max-w-[34rem] text-[0.9375rem] leading-relaxed text-stone-300">{featMeta.body}</p>
             <div className="mt-6">
               <RecordTag recorded={featured.recorded} />
             </div>
           </article>
           <div className="grid grid-cols-1 gap-px bg-stone-50/15 sm:grid-cols-2 lg:col-span-7">
-            {rest.map((f, i) => (
-              <article
-                key={f.kind}
-                data-reveal
-                style={{ '--reveal-delay': `${i * 80}ms` } as React.CSSProperties}
-                className="bg-jade-900 py-8 sm:px-8 lg:py-10"
-              >
-                <TypologyDrawing kind={f.kind} className="h-auto w-full max-w-[15rem] text-stone-200" />
-                <p className="eyebrow mt-6 text-stone-400">{f.terms}</p>
-                <h3 className="mt-2 font-display text-2xl font-medium leading-tight">{f.name}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-stone-300">{f.body}</p>
-                <div className="mt-5">
-                  <RecordTag recorded={f.recorded} />
-                </div>
-              </article>
-            ))}
+            {rest.map((f, i) => {
+              const meta = formMeta[f.kind] || { name: f.name, terms: f.terms, body: f.body };
+              return (
+                <article
+                  key={f.kind}
+                  data-reveal
+                  style={{ '--reveal-delay': `${i * 80}ms` } as React.CSSProperties}
+                  className="bg-jade-900 py-8 sm:px-8 lg:py-10"
+                >
+                  <TypologyDrawing kind={f.kind} className="h-auto w-full max-w-[15rem] text-stone-200" />
+                  <p className="eyebrow mt-6 text-stone-400">{meta.terms}</p>
+                  <h3 className="mt-2 font-display text-2xl font-medium leading-tight">{meta.name}</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-stone-300">{meta.body}</p>
+                  <div className="mt-5">
+                    <RecordTag recorded={f.recorded} />
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </div>
         <p className="mt-6 max-w-[52rem] font-mono text-[11px] leading-relaxed tracking-wide text-stone-400">
-          SCHEMATIC SECTIONS AND PLANS, NOT TO SCALE. Regional names overlap and vary; these are examples, not a
-          catalogue. &ldquo;Knowledge records today&rdquo; marks the typologies in JalDrishti&rsquo;s current knowledge
-          base (baoli, bawari, kund, vav).
+          {t('home.diversity.footerNote', 'SCHEMATIC SECTIONS AND PLANS, NOT TO SCALE. Regional names overlap and vary; these are examples, not a catalogue. "Knowledge records today" marks the typologies in JalDrishti’s current knowledge base (baoli, bawari, kund, vav).')}
         </p>
       </div>
     </section>
@@ -310,132 +345,138 @@ export const DiversitySection: React.FC<{ id: string }> = ({ id }) => {
 };
 
 /** S3 — Why documentation matters, and the method that follows. */
-export const DocumentationSection: React.FC = () => (
-  <section aria-labelledby="documentation-title" className="gutter relative bg-ink-900 pb-24 pt-28 text-stone-50 sm:pb-32 sm:pt-36">
-    <div className="mx-auto max-w-wide">
-      <div className="grid grid-cols-1 gap-14 lg:grid-cols-12 lg:gap-10">
-        <div className="lg:col-span-5">
-          <SectionIndex label="Why documentation matters" tone="light" />
-          <h2 id="documentation-title" data-reveal="mask" className="mt-10 font-display text-display-lg font-medium">
-            Every structure tells a different story.
-          </h2>
-          <p data-reveal className="mt-8 max-w-prose text-[1.0625rem] leading-relaxed text-stone-200">
-            Visible deterioration can take many forms: cracks, displaced material, moisture, vegetation, surface loss,
-            or signs of earlier intervention. Their significance depends on the structure and the conditions around
-            it. Good documentation creates a clearer starting point for investigation and conservation.
-          </p>
-        </div>
-        <figure data-reveal className="lg:col-span-7 lg:pt-6">
-          <MasonryDetail />
-          <figcaption className="mt-3 font-mono text-[11px] tracking-wide text-stone-300">
-            ILLUSTRATIVE DETAIL OF COURSED MASONRY · Visible signs are where a record begins, not where a diagnosis ends.
-          </figcaption>
-        </figure>
-      </div>
+export const DocumentationSection: React.FC = () => {
+  const { t } = useLanguage();
+  const stages = [
+    { key: 'see', verb: t('home.doc.see', 'See'), deva: 'दृष्टि', line: t('home.doc.seeLine', 'Inspect what is present on the surface.') },
+    { key: 'understand', verb: t('home.doc.understand', 'Understand'), deva: 'बोध', line: t('home.doc.understandLine', 'Recover the context behind it.') },
+    { key: 'assess', verb: t('home.doc.assess', 'Assess'), deva: 'आकलन', line: t('home.doc.assessLine', 'Weigh materials and interventions.') },
+    { key: 'revive', verb: t('home.doc.revive', 'Revive'), deva: 'पुनर्जीवन', line: t('home.doc.reviveLine', 'Plan care that can be accounted for.') },
+  ];
 
-      <div className="mt-24 sm:mt-28">
-        <p data-reveal className="eyebrow text-jade-200">
-          The JalDrishti method · See → Understand → Assess → Revive
-        </p>
-        <ol className="mt-6 grid grid-cols-2 border-t border-stone-50/20 md:grid-cols-4" aria-label="The JalDrishti method">
-          {STAGES.map((s, i) => (
-            <li
-              key={s.key}
-              data-reveal
-              style={{ '--reveal-delay': `${i * 90}ms` } as React.CSSProperties}
-              className={`relative py-7 pr-4 ${i % 2 ? 'border-l border-stone-50/20 pl-4 md:pl-6' : ''} ${
-                i === 2 ? 'border-t border-stone-50/20 md:border-l md:border-t-0 md:pl-6' : ''
-              } ${i === 3 ? 'border-t border-stone-50/20 md:border-t-0' : ''}`}
-            >
-              <span className="eyebrow text-jade-200">{String(i + 1).padStart(2, '0')}</span>
-              <span className="mt-3 flex items-baseline gap-3">
-                <span className="font-display text-display-sm">{s.verb}</span>
-                <span className="font-deva text-sm text-stone-400" lang="hi">
-                  {s.deva}
+  return (
+    <section aria-labelledby="documentation-title" className="gutter relative bg-ink-900 pb-24 pt-28 text-stone-50 sm:pb-32 sm:pt-36">
+      <div className="mx-auto max-w-wide">
+        <div className="grid grid-cols-1 gap-14 lg:grid-cols-12 lg:gap-10">
+          <div className="lg:col-span-5">
+            <SectionIndex label={t('home.doc.label', 'Why documentation matters')} tone="light" />
+            <h2 id="documentation-title" data-reveal="mask" className="mt-10 font-display text-display-lg font-medium">
+              {t('home.doc.title', 'Every structure tells a different story.')}
+            </h2>
+            <p data-reveal className="mt-8 max-w-prose text-[1.0625rem] leading-relaxed text-stone-200">
+              {t('home.doc.body', 'Visible deterioration can take many forms: cracks, displaced material, moisture, vegetation, surface loss, or signs of earlier intervention. Their significance depends on the structure and the conditions around it. Good documentation creates a clearer starting point for investigation and conservation.')}
+            </p>
+          </div>
+          <figure data-reveal className="lg:col-span-7 lg:pt-6">
+            <MasonryDetail />
+            <figcaption className="mt-3 font-mono text-[11px] tracking-wide text-stone-300">
+              {t('home.doc.caption', 'ILLUSTRATIVE DETAIL OF COURSED MASONRY · Visible signs are where a record begins, not where a diagnosis ends.')}
+            </figcaption>
+          </figure>
+        </div>
+
+        <div className="mt-24 sm:mt-28">
+          <p data-reveal className="eyebrow text-jade-200">
+            {t('home.doc.method', 'The JalDrishti method · See → Understand → Assess → Revive')}
+          </p>
+          <ol className="mt-6 grid grid-cols-2 border-t border-stone-50/20 md:grid-cols-4" aria-label="The JalDrishti method">
+            {stages.map((s, i) => (
+              <li
+                key={s.key}
+                data-reveal
+                style={{ '--reveal-delay': `${i * 90}ms` } as React.CSSProperties}
+                className={`relative py-7 pr-4 ${i % 2 ? 'border-l border-stone-50/20 pl-4 md:pl-6' : ''} ${
+                  i === 2 ? 'border-t border-stone-50/20 md:border-l md:border-t-0 md:pl-6' : ''
+                } ${i === 3 ? 'border-t border-stone-50/20 md:border-t-0' : ''}`}
+              >
+                <span className="eyebrow text-jade-200">{String(i + 1).padStart(2, '0')}</span>
+                <span className="mt-3 flex items-baseline gap-3">
+                  <span className="font-display text-display-sm">{s.verb}</span>
+                  <span className="font-deva text-sm text-stone-400" lang="hi">
+                    {s.deva}
+                  </span>
                 </span>
-              </span>
-              <span className="mt-2 block text-sm leading-relaxed text-stone-300">{s.line}</span>
-              {i < STAGES.length - 1 && (
-                <span aria-hidden="true" className="absolute right-3 top-7 hidden text-stone-400 md:block">
-                  →
-                </span>
-              )}
-            </li>
-          ))}
-        </ol>
+                <span className="mt-2 block text-sm leading-relaxed text-stone-300">{s.line}</span>
+                {i < stages.length - 1 && (
+                  <span aria-hidden="true" className="absolute right-3 top-7 hidden text-stone-400 md:block">
+                    →
+                  </span>
+                )}
+              </li>
+            ))}
+          </ol>
+        </div>
       </div>
-    </div>
-  </section>
-);
+    </section>
+  );
+};
 
 const TYPOLOGIES = ['Baoli', 'Bawari', 'Kund', 'Vav'];
 
 /** C — UNDERSTAND: the knowledge layer, shown beside a section drawn from the 3D model. */
-export const UnderstandSection: React.FC<{ onRouteChange: Navigate }> = ({ onRouteChange }) => (
-  <section aria-labelledby="understand-title" className="gutter bg-ink-900 py-28 text-stone-50 sm:py-36">
-    <div className="mx-auto max-w-wide">
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
-        <div className="lg:col-span-4">
-          <SectionIndex number="02" label="Understand" tone="light" />
-        </div>
-        <h2
-          id="understand-title"
-          data-reveal="mask"
-          className="max-w-[20ch] font-display text-display-lg font-medium lg:col-span-8"
-        >
-          Connect what is visible with what is known.
-        </h2>
-      </div>
-
-      <div className="mt-16 grid grid-cols-1 gap-14 lg:grid-cols-12 lg:gap-10">
-        <figure data-reveal className="lg:col-span-7">
-          <div
-            className="overflow-x-auto border border-stone-50/10 bg-ink-950/40 p-4 sm:p-8"
-            tabIndex={0}
-            aria-label="Section drawing (scrolls horizontally on small screens)"
+export const UnderstandSection: React.FC<{ onRouteChange: Navigate }> = ({ onRouteChange }) => {
+  const { t } = useLanguage();
+  return (
+    <section aria-labelledby="understand-title" className="gutter bg-ink-900 py-28 text-stone-50 sm:py-36">
+      <div className="mx-auto max-w-wide">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
+          <div className="lg:col-span-4">
+            <SectionIndex number="02" label={t('home.understand.label', 'Understand')} /* label="Understand" */ tone="light" />
+          </div>
+          <h2
+            id="understand-title"
+            data-reveal="mask"
+            className="max-w-[20ch] font-display text-display-lg font-medium lg:col-span-8"
           >
-            <StepwellSection tone="dark" className="h-auto w-full min-w-[620px] sm:min-w-0" />
-          </div>
-          <figcaption className="mt-4 flex flex-wrap justify-between gap-2 font-mono text-[11px] tracking-wide text-stone-400">
-            <span>SECTION A–A · THE ILLUSTRATIVE STEPWELL FROM THE OPENING, ONE EXAMPLE</span>
-            <span>Drawn from the same dimensions as the 3D model. Water levels are indicative.</span>
-          </figcaption>
-        </figure>
+            {t('home.understand.title', 'Connect what is visible with what is known.')}
+          </h2>
+        </div>
 
-        <div className="lg:col-span-5 lg:pl-6">
-          <p data-reveal className="max-w-prose text-[1.0625rem] leading-relaxed text-stone-200">
-            Visual observations are only one part of understanding a traditional water structure. Construction
-            practices, regional knowledge, historical sources, site context, and material choices can add important
-            perspective. JalDrishti aims to connect observations with traceable knowledge while keeping the origin of
-            each insight visible.
-          </p>
-          <PointList
-            tone="light"
-            className="mt-10"
-            points={[
-              'Connect observations with relevant documented knowledge.',
-              'Preserve provenance and references for knowledge entries.',
-              'Distinguish evidence from interpretation.',
-              'Make missing information and uncertainty visible.',
-            ]}
-          />
-          <div data-reveal className="mt-10 border border-stone-50/15 p-5">
-            <p className="eyebrow text-stone-400">Knowledge records today</p>
-            <p className="mt-3 font-display text-2xl text-stone-50">{TYPOLOGIES.join(' · ')}</p>
-            <p className="mt-3 text-sm leading-relaxed text-stone-400">
-              Each record describes construction, materials and water-management principles, and lists the sources
-              its statements rest on. Tanks, temple tanks, ponds and other regional systems are within the intended
-              scope but do not yet have records.
+        <div className="mt-16 grid grid-cols-1 gap-14 lg:grid-cols-12 lg:gap-10">
+          <figure data-reveal className="lg:col-span-7">
+            <div
+              className="overflow-x-auto border border-stone-50/10 bg-ink-950/40 p-4 sm:p-8"
+              tabIndex={0}
+              aria-label="Section drawing (scrolls horizontally on small screens)"
+            >
+              <StepwellSection tone="dark" className="h-auto w-full min-w-[620px] sm:min-w-0" />
+            </div>
+            <figcaption className="mt-4 flex flex-wrap justify-between gap-2 font-mono text-[11px] tracking-wide text-stone-400">
+              <span>SECTION A–A · THE ILLUSTRATIVE STEPWELL FROM THE OPENING, ONE EXAMPLE</span>
+              <span>Drawn from the same dimensions as the 3D model. Water levels are indicative.</span>
+            </figcaption>
+          </figure>
+
+          <div className="lg:col-span-5 lg:pl-6">
+            <p data-reveal className="max-w-prose text-[1.0625rem] leading-relaxed text-stone-200">
+              {t('home.understand.body', 'Visual observations are only one part of understanding a traditional water structure. Construction practices, regional knowledge, historical sources, site context, and material choices can add important perspective. JalDrishti aims to connect observations with traceable knowledge while keeping the origin of each insight visible.')}
             </p>
+            <PointList
+              tone="light"
+              className="mt-10"
+              points={[
+                'Connect observations with relevant documented knowledge.',
+                'Preserve provenance and references for knowledge entries.',
+                'Distinguish evidence from interpretation.',
+                'Make missing information and uncertainty visible.',
+              ]}
+            />
+            <div data-reveal className="mt-10 border border-stone-50/15 p-5">
+              <p className="eyebrow text-stone-400">{t('home.diversity.tagToday', 'Knowledge records today')}</p>
+              <p className="mt-3 font-display text-2xl text-stone-50">{TYPOLOGIES.join(' · ')}</p>
+              <p className="mt-3 text-sm leading-relaxed text-stone-400">
+                {t('home.understand.callout', 'Each record describes construction, materials and water-management principles, and lists the sources its statements rest on. Tanks, temple tanks, ponds and other regional systems are within the intended scope but do not yet have records.')}
+              </p>
+            </div>
+            <a {...routeLink(onRouteChange, '/knowledge')} data-reveal className="btn-ghost-light mt-8">
+              {t('home.understand.btnKnowledge', 'Explore knowledge')}
+            </a>
           </div>
-          <a {...routeLink(onRouteChange, '/knowledge')} data-reveal className="btn-ghost-light mt-8">
-            Explore knowledge
-          </a>
         </div>
       </div>
-    </div>
-  </section>
-);
+    </section>
+  );
+};
 
 /** Phases used by the restoration planner (see components/RestorationRoadmap.tsx). */
 const ROADMAP = [
@@ -446,58 +487,59 @@ const ROADMAP = [
 ];
 
 /** E — REVIVE. */
-export const ReviveSection: React.FC = () => (
-  <section aria-labelledby="revive-title" className="gutter bg-jade-800 py-28 text-stone-50 sm:py-36">
-    <div className="mx-auto grid max-w-wide grid-cols-1 gap-16 lg:grid-cols-12 lg:gap-10">
-      <div className="lg:col-span-5">
-        <SectionIndex number="04" label="Revive" tone="light" />
-        <h2 id="revive-title" data-reveal="mask" className="mt-10 font-display text-display-lg font-medium">
-          Support conservation that respects original knowledge.
-        </h2>
-        <p data-reveal className="mt-8 max-w-prose text-[1.0625rem] leading-relaxed text-stone-200">
-          Responsible conservation seeks to understand the problem before choosing an intervention. It values the
-          original fabric, considers the compatibility of materials and methods, addresses contributing causes where
-          established, and records the reasoning behind proposed actions.
-        </p>
-        <PointList
-          tone="light"
-          className="mt-10"
-          points={[
-            'Build a clearer record of observed conditions.',
-            'Organise conservation considerations and outstanding questions.',
-            'Record proposed actions and their supporting evidence where supported.',
-            'Encourage appropriate expert review and ongoing monitoring.',
-          ]}
-        />
-      </div>
+export const ReviveSection: React.FC = () => {
+  const { t } = useLanguage();
+  return (
+    <section aria-labelledby="revive-title" className="gutter bg-jade-800 py-28 text-stone-50 sm:py-36">
+      <div className="mx-auto grid max-w-wide grid-cols-1 gap-16 lg:grid-cols-12 lg:gap-10">
+        <div className="lg:col-span-5">
+          <SectionIndex number="04" label={t('home.revive.label', 'Revive')} /* label="Revive" */ tone="light" />
+          <h2 id="revive-title" data-reveal="mask" className="mt-10 font-display text-display-lg font-medium">
+            {t('home.revive.title', 'Support conservation that respects original knowledge.')}
+          </h2>
+          <p data-reveal className="mt-8 max-w-prose text-[1.0625rem] leading-relaxed text-stone-200">
+            {t('home.revive.body', 'Responsible conservation seeks to understand the problem before choosing an intervention. It values the original fabric, considers the compatibility of materials and methods, addresses contributing causes where established, and records the reasoning behind proposed actions.')}
+          </p>
+          <PointList
+            tone="light"
+            className="mt-10"
+            points={[
+              'Build a clearer record of observed conditions.',
+              'Organise conservation considerations and outstanding questions.',
+              'Record proposed actions and their supporting evidence where supported.',
+              'Encourage appropriate expert review and ongoing monitoring.',
+            ]}
+          />
+        </div>
 
-      <figure data-reveal className="lg:col-span-6 lg:col-start-7 lg:pt-16">
-        <p className="eyebrow text-jade-200">How the planner organises a conservation roadmap</p>
-        <ol className="mt-6">
-          {ROADMAP.map((r, i) => (
-            <li key={r.label} className="relative grid grid-cols-[3rem_1fr] pb-9 last:pb-0">
-              {i < ROADMAP.length - 1 && (
-                <span aria-hidden="true" className="absolute bottom-0 left-[0.6875rem] top-8 w-px bg-stone-50/20" />
-              )}
-              <span className="relative flex h-6 w-6 items-center justify-center rounded-full border border-stone-50/40 font-mono text-[10px] text-stone-200">
-                {i + 1}
-              </span>
-              <div>
-                <p className="font-display text-2xl leading-tight text-stone-50">{r.label}</p>
-                <p className="mt-1.5 text-sm leading-relaxed text-stone-300">{r.note}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-        <figcaption className="mt-10 border-l-2 border-jade-300 pl-4 text-sm leading-relaxed text-stone-300">
-          Roadmap actions are decision support, not a prescription. Where the planner indicates that structural or
-          chemical verification is needed, it says so. Any action should be reviewed by a qualified conservation
-          professional; JalDrishti does not certify structural safety.
-        </figcaption>
-      </figure>
-    </div>
-  </section>
-);
+        <figure data-reveal className="lg:col-span-6 lg:col-start-7 lg:pt-16">
+          <p className="eyebrow text-jade-200">How the planner organises a conservation roadmap</p>
+          <ol className="mt-6">
+            {ROADMAP.map((r, i) => (
+              <li key={r.label} className="relative grid grid-cols-[3rem_1fr] pb-9 last:pb-0">
+                {i < ROADMAP.length - 1 && (
+                  <span aria-hidden="true" className="absolute bottom-0 left-[0.6875rem] top-8 w-px bg-stone-50/20" />
+                )}
+                <span className="relative flex h-6 w-6 items-center justify-center rounded-full border border-stone-50/40 font-mono text-[10px] text-stone-200">
+                  {i + 1}
+                </span>
+                <div>
+                  <p className="font-display text-2xl leading-tight text-stone-50">{r.label}</p>
+                  <p className="mt-1.5 text-sm leading-relaxed text-stone-300">{r.note}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <figcaption className="mt-10 border-l-2 border-jade-300 pl-4 text-sm leading-relaxed text-stone-300">
+            Roadmap actions are decision support, not a prescription. Where the planner indicates that structural or
+            chemical verification is needed, it says so. Any action should be reviewed by a qualified conservation
+            professional; JalDrishti does not certify structural safety.
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+  );
+};
 
 const QUESTIONS = [
   {

@@ -43,6 +43,22 @@ class ImageUploadResponse(BaseModel):
     height: int = Field(..., ge=1, description="Image height in pixels")
     bytes: int = Field(..., ge=0, description="Payload size in bytes")
     created_at: str = Field(..., description="ISO 8601 creation timestamp")
+    inspection_status: Optional[str] = Field(
+        default="uploaded",
+        description="Image inspection gate status: 'accepted', 'rejected', or 'uncertain'",
+    )
+    relevance_confidence: Optional[float] = Field(
+        default=None, ge=0.0, le=1.0, description="Heritage relevance confidence score"
+    )
+    rejection_reason: Optional[str] = Field(
+        default=None, description="Explanation if image is rejected or uncertain"
+    )
+    needs_manual_review: Optional[bool] = Field(
+        default=False, description="Whether inspection requires expert manual review"
+    )
+    model_version: Optional[str] = Field(
+        default=None, description="Identifier of the inspection gate model"
+    )
 
 
 class HeritageImageSummary(BaseModel):
@@ -77,6 +93,21 @@ class HeritageImageSummary(BaseModel):
     )
     original_url: str = Field(
         ..., description="Uncompressed original delivery URL for detailed inspection"
+    )
+    inspection_status: Optional[str] = Field(
+        default="uploaded", description="Inspection gate status"
+    )
+    relevance_confidence: Optional[float] = Field(
+        default=None, description="Heritage relevance confidence score"
+    )
+    rejection_reason: Optional[str] = Field(
+        default=None, description="Reason if rejected or uncertain"
+    )
+    needs_manual_review: Optional[bool] = Field(
+        default=False, description="Whether flagged for manual review"
+    )
+    model_version: Optional[str] = Field(
+        default=None, description="Model release version tag"
     )
 
 
@@ -120,6 +151,21 @@ class ImageMetadata(BaseModel):
     secure_url: str = Field(
         ..., description="Cloudinary delivery / secure access URL"
     )
+    inspection_status: Optional[str] = Field(
+        default="uploaded", description="Inspection gate status: 'accepted', 'rejected', or 'uncertain'"
+    )
+    relevance_confidence: Optional[float] = Field(
+        default=None, description="Heritage relevance confidence score"
+    )
+    rejection_reason: Optional[str] = Field(
+        default=None, description="Explanation if rejected or uncertain"
+    )
+    needs_manual_review: Optional[bool] = Field(
+        default=False, description="Whether flagged for manual review"
+    )
+    model_version: Optional[str] = Field(
+        default=None, description="Model identifier"
+    )
 
     def to_upload_response(self) -> ImageUploadResponse:
         """Project persistent metadata to public client response."""
@@ -136,6 +182,11 @@ class ImageMetadata(BaseModel):
             height=self.height,
             bytes=self.bytes,
             created_at=self.created_at,
+            inspection_status=self.inspection_status,
+            relevance_confidence=self.relevance_confidence,
+            rejection_reason=self.rejection_reason,
+            needs_manual_review=self.needs_manual_review,
+            model_version=self.model_version,
         )
 
     def to_heritage_summary(self) -> HeritageImageSummary:

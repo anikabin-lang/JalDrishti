@@ -115,6 +115,7 @@ export const defectColor = (className: string): string => {
   switch (className) {
     case 'crack':
       return '#C0714F'; // laterite-400
+    case 'vegetation':
     case 'vegetation_root_intrusion':
     case 'biological_growth':
       return '#7FA393'; // jade-300
@@ -132,12 +133,24 @@ export const defectColor = (className: string): string => {
 
 /**
  * True only when the vision service reports a loaded detection model. The
- * backend appends "+fasterrcnn-..." or "+yolov8n-crack" to model_version only when
+ * backend appends "+fasterrcnn-..." or "+yolov8n-crack" or "+yolo26n..." to model_version only when
  * an actual detection model was loaded and ran live inference; otherwise any
  * detections came from demo matches or fallback logic.
  */
-export const visionModelRan = (result: AnalysisResultContract): boolean =>
-  /(?:fasterrcnn|yolo|rcnn)/i.test(result.vision.processing_metadata?.model_version ?? '');
+export const isGateRejected = (result: AnalysisResultContract): boolean =>
+  result.vision.relevance_status === 'irrelevant';
 
-export const visionOrigin = (session: InspectionSession): 'fixture' | 'model' | 'unverified' =>
-  session.provenance === 'fixture' ? 'fixture' : visionModelRan(session.result) ? 'model' : 'unverified';
+export const isGateUncertain = (result: AnalysisResultContract): boolean =>
+  result.vision.relevance_status === 'uncertain';
+
+export const visionModelRan = (result: AnalysisResultContract): boolean =>
+  /(?:fasterrcnn|yolo|rcnn|ensemble)/i.test(result.vision.processing_metadata?.model_version ?? '');
+
+export const visionOrigin = (
+  session: InspectionSession
+): 'fixture' | 'model' | 'rejected' | 'uncertain' | 'unverified' => {
+  if (session.provenance === 'fixture') return 'fixture';
+  if (isGateRejected(session.result)) return 'rejected';
+  if (isGateUncertain(session.result)) return 'uncertain';
+  return visionModelRan(session.result) ? 'model' : 'unverified';
+};

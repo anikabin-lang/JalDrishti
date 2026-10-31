@@ -1,0 +1,67 @@
+{
+  "model_architecture": "mobilenet_v3_small",
+  "best_val_accuracy": 1.0,
+  "precision": 1.0,
+  "recall": 1.0,
+  "f1_score": 1.0,
+  "confusion_matrix": {
+    "TP": 110,
+    "FP": 0,
+    "TN": 120,
+    "FN": 0
+  },
+  "uncertain_cases_val": 0,
+  "calibration": {
+    "p_relevant_threshold": 0.7,
+    "p_uncertain_band": [
+      0.35,
+      0.7
+    ],
+    "p_irrelevant_threshold": 0.35
+  },
+  "training_duration_seconds": 47.4,
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 0.0538,
+      "train_acc": 0.9826,
+      "val_loss": 0.1026,
+      "val_acc": 0.9826
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.011,
+      "train_acc": 0.9946,
+      "val_loss": 0.0,
+      "val_acc": 1.0
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.0068,
+      "train_acc": 0.9978,
+      "val_loss": 0.1437,
+      "val_acc": 0.9043
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.0012,
+      "train_acc": 1.0,
+      "val_loss": 0.0056,
+      "val_acc": 1.0
+    },
+    {
+      "epoch": 5,
+      "train_loss": 0.0001,
+      "train_acc": 1.0,
+      "val_loss": 0.0002,
+      "val_acc": 1.0
+    },
+    {
+      "epoch": 6,
+      "train_loss": 0.0001,
+      "train_acc": 1.0,
+      "val_loss": 0.0,
+      "val_acc": 1.0
+    }
+  ]
+}

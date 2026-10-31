@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DetectionItem, ImageDimensions } from '../types';
 import { defectColor, humanize } from '../utils/analysis';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export interface InspectionCanvasProps {
   /** Null when the result carries no displayable image; boxes are then drawn on a blank frame. */
@@ -26,6 +27,7 @@ export const InspectionCanvas: React.FC<InspectionCanvasProps> = ({
   onHighlight,
   className = '',
 }) => {
+  const { t } = useLanguage();
   const [showLabels, setShowLabels] = useState(true);
   const [imageFailed, setImageFailed] = useState(false);
   const { width_pixels: w, height_pixels: h } = imageDimensions;
@@ -40,7 +42,7 @@ export const InspectionCanvas: React.FC<InspectionCanvasProps> = ({
     <figure className={`overflow-hidden rounded-sm bg-ws-night ${className}`}>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ws-text/10 px-4 py-2.5">
         <p className="font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-ws-muted tabular-nums">
-          {w} × {h} px · {visible.length} of {detections.length} shown
+          {w} × {h} px · {visible.length} {t('canvas.of', 'of')} {detections.length} {t('canvas.shown', 'shown')}
         </p>
         <label className="flex cursor-pointer items-center gap-2 text-xs text-ws-text">
           <input
@@ -49,7 +51,7 @@ export const InspectionCanvas: React.FC<InspectionCanvasProps> = ({
             checked={showLabels}
             onChange={(event) => setShowLabels(event.target.checked)}
           />
-          Labels
+          {t('canvas.labels', 'Labels')}
         </label>
       </div>
 
@@ -66,7 +68,7 @@ export const InspectionCanvas: React.FC<InspectionCanvasProps> = ({
           <>
             <rect width={w} height={h} fill="#221D17" />
             <text x={w / 2} y={h / 2} textAnchor="middle" fill="#76675A" fontSize={fontSize * 1.2} fontFamily="Instrument Sans, sans-serif">
-              Image not available — boxes shown in image coordinates
+              {t('canvas.notAvailable', 'Image not available — boxes shown in image coordinates')}
             </text>
           </>
         )}
@@ -80,7 +82,8 @@ export const InspectionCanvas: React.FC<InspectionCanvasProps> = ({
           const color = defectColor(d.class_name);
           const active = highlighted === index;
           const dimmed = highlighted !== null && !active;
-          const label = `${humanize(d.class_name)} · ${(d.confidence * 100).toFixed(0)}%`;
+          const defectName = t('defect.' + d.class_name, humanize(d.class_name));
+          const label = `${defectName} · ${(d.confidence * 100).toFixed(0)}%`;
           return (
             <g
               key={index}
@@ -117,7 +120,7 @@ export const InspectionCanvas: React.FC<InspectionCanvasProps> = ({
       </svg>
 
       <figcaption className="border-t border-ws-text/10 px-4 py-2.5 text-xs text-ws-muted">
-        Boxes mark regions returned by the vision service. Percentages are detection confidence, not severity.
+        {t('canvas.boxesLegend', 'Boxes mark regions returned by the vision service. Percentages are detection confidence, not severity.')}
       </figcaption>
     </figure>
   );

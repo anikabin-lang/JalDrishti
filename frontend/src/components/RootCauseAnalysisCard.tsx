@@ -2,6 +2,7 @@ import React from 'react';
 import { RootCauseItem } from '../types';
 import { StatusBadge, BadgeVariant } from './StatusBadge';
 import { humanize } from '../utils/analysis';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const URGENCY: Record<string, BadgeVariant> = {
   critical: 'danger',
@@ -17,8 +18,14 @@ export interface RootCauseAnalysisCardProps {
 
 /** Probable causes inferred by the rule engine, each with the evidence rules that fired. */
 export const RootCauseAnalysisCard: React.FC<RootCauseAnalysisCardProps> = ({ causes, className = '' }) => {
+  const { t } = useLanguage();
+
   if (causes.length === 0) {
-    return <p className={`text-sm text-ink-600 ${className}`}>The rule engine did not infer any probable causes from these findings.</p>;
+    return (
+      <p className={`text-sm text-ink-600 ${className}`}>
+        {t('rootcause.noCauses', 'The rule engine did not infer any probable causes from these findings.')}
+      </p>
+    );
   }
 
   return (
@@ -29,14 +36,14 @@ export const RootCauseAnalysisCard: React.FC<RootCauseAnalysisCardProps> = ({ ca
           <div>
             <p className="text-sm font-medium text-ink-900">{cause.finding}</p>
             <p className="mt-1.5 text-sm leading-relaxed text-ink-700">
-              <span className="text-ink-500">Probable cause — </span>
+              <span className="text-ink-500">{t('rootcause.probableCause', 'Probable cause')} — </span>
               {cause.probable_cause}
             </p>
             {cause.evidence_rules.length > 0 && (
               <ul className="mt-3 space-y-1 text-xs text-ink-600">
                 {cause.evidence_rules.map((rule) => (
                   <li key={rule} className="flex gap-2">
-                    <span className="font-mono text-ink-500">rule</span>
+                    <span className="font-mono text-ink-500">{t('rootcause.rule', 'rule')}</span>
                     <span>{rule}</span>
                   </li>
                 ))}
@@ -45,7 +52,10 @@ export const RootCauseAnalysisCard: React.FC<RootCauseAnalysisCardProps> = ({ ca
           </div>
           {cause.urgency && (
             <div>
-              <StatusBadge label={`${humanize(cause.urgency)} urgency`} variant={URGENCY[cause.urgency] ?? 'neutral'} />
+              <StatusBadge
+                label={`${t('severity.' + cause.urgency, humanize(cause.urgency))} ${t('rootcause.urgency', 'urgency')}`}
+                variant={URGENCY[cause.urgency] ?? 'neutral'}
+              />
             </div>
           )}
         </li>

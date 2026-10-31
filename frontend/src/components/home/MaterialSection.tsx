@@ -2,25 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { SectionIndex } from './SectionIndex';
 import { PointList } from './StorySections';
 import { evaluateMaterialCompatibility } from '../../services/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { CandidateIntervention, CompatibilityDimensions } from '../../types';
 
 const SUBSTRATE = 'hydraulic_lime_mortar';
 const CANDIDATES = ['natural_hydraulic_lime_nhl', 'portland_cement_opc'];
 
-const NAMES: Record<string, string> = {
-  hydraulic_lime_mortar: 'Traditional hydraulic lime mortar',
-  natural_hydraulic_lime_nhl: 'Natural hydraulic lime (NHL)',
-  portland_cement_opc: 'Ordinary Portland cement',
-};
-
-const DIMENSIONS: { key: keyof CompatibilityDimensions; label: string; note: string }[] = [
-  { key: 'mechanical', label: 'Mechanical', note: 'Should a repair be weaker than the stone it joins?' },
-  { key: 'moisture', label: 'Moisture', note: 'Can water vapour still leave the wall?' },
-  { key: 'thermal', label: 'Thermal', note: 'Do they expand and contract together?' },
-  { key: 'chemical', label: 'Chemical', note: 'Will salts or reactions damage the original?' },
-  { key: 'reversibility', label: 'Reversibility', note: 'Can it be removed later without harm?' },
-  { key: 'heritage', label: 'Heritage', note: 'Is it consistent with how the structure was built?' },
-  { key: 'visual', label: 'Visual', note: 'Does it sit quietly beside historic fabric?' },
+const DIMENSIONS: { key: keyof CompatibilityDimensions; labelKey: string; defaultLabel: string; note: string }[] = [
+  { key: 'mechanical', labelKey: 'home.material.dimMechanical', defaultLabel: 'Mechanical', note: 'Should a repair be weaker than the stone it joins?' },
+  { key: 'moisture', labelKey: 'home.material.dimMoisture', defaultLabel: 'Moisture', note: 'Can water vapour still leave the wall?' },
+  { key: 'thermal', labelKey: 'home.material.dimThermal', defaultLabel: 'Thermal', note: 'Do they expand and contract together?' },
+  { key: 'chemical', labelKey: 'home.material.dimChemical', defaultLabel: 'Chemical', note: 'Will salts or reactions damage the original?' },
+  { key: 'reversibility', labelKey: 'home.material.dimReversibility', defaultLabel: 'Reversibility', note: 'Can it be removed later without harm?' },
+  { key: 'heritage', labelKey: 'home.material.dimHeritage', defaultLabel: 'Heritage', note: 'Is it consistent with how the structure was built?' },
+  { key: 'visual', labelKey: 'home.material.dimVisual', defaultLabel: 'Visual', note: 'Does it sit quietly beside historic fabric?' },
 ];
 
 type State =
@@ -28,20 +23,34 @@ type State =
   | { status: 'ready'; candidates: CandidateIntervention[]; verification: boolean }
   | { status: 'unavailable'; message: string };
 
-const recommendationLabel = (r: CandidateIntervention['recommendation']) =>
-  ({
-    strongly_recommended: 'Strongly recommended',
-    recommended: 'Recommended',
-    acceptable_conditional: 'Conditional',
-    prohibited_incompatible: 'Incompatible',
-  })[r] ?? r;
-
 /**
  * Explains compatibility with a live call to the rule-based engine. When the
  * service is unreachable the dimensions are still explained, with no numbers.
  */
 export const MaterialSection: React.FC = () => {
+  const { t } = useLanguage();
   const [state, setState] = useState<State>({ status: 'loading' });
+
+  const NAMES: Record<string, string> = {
+    hydraulic_lime_mortar: t('material.hydraulicLimeMortar', 'Traditional hydraulic lime mortar'),
+    natural_hydraulic_lime_nhl: t('material.nhlMortar', 'Natural hydraulic lime (NHL)'),
+    portland_cement_opc: t('material.opcCement', 'Ordinary Portland cement'),
+  };
+
+  const getRecommendationLabel = (r: CandidateIntervention['recommendation']) => {
+    switch (r) {
+      case 'strongly_recommended':
+        return t('home.material.stronglyRecommended', 'Strongly recommended');
+      case 'recommended':
+        return t('home.material.recommended', 'Recommended');
+      case 'acceptable_conditional':
+        return t('home.material.conditional', 'Conditional');
+      case 'prohibited_incompatible':
+        return t('home.material.incompatible', 'Incompatible');
+      default:
+        return r;
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -70,30 +79,30 @@ export const MaterialSection: React.FC = () => {
       <div className="mx-auto max-w-wide">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
           <div className="lg:col-span-5">
-            <SectionIndex number="03" label="Assess" />
+            <SectionIndex number="03" label={t('home.material.label', 'Assess')} /* label="Assess" */ />
             <h2 id="materials-title" data-reveal="mask" className="mt-10 font-display text-display-lg font-medium text-ink-950">
-              Consider the material, the context, and the cause.
+              {t('home.material.title', 'Consider the material, the context, and the cause.')}
             </h2>
             <p data-reveal className="mt-8 max-w-prose text-[1.0625rem] leading-relaxed text-ink-700">
-              Conservation decisions depend on more than the appearance of a damaged surface. Existing materials,
-              construction, moisture, drainage, prior repairs, local practices, and possible causes of deterioration all
-              deserve consideration. JalDrishti is intended to support this thinking with organised observations and
-              conservation-oriented material considerations.
+              {t(
+                'home.material.body',
+                'Conservation decisions depend on more than the appearance of a damaged surface. Existing materials, construction, moisture, drainage, prior repairs, local practices, and possible causes of deterioration all deserve consideration. JalDrishti is intended to support this thinking with organised observations and conservation-oriented material considerations.'
+              )}
             </p>
             <PointList
               className="mt-10"
               points={[
-                'Present candidate material or intervention considerations where implemented.',
-                'Explain relevant compatibility factors and evidence.',
-                'Flag cases that require inspection, testing, or professional review.',
-                'Keep consequential decisions with qualified practitioners.',
+                t('home.material.point1', 'Present candidate material or intervention considerations where implemented.'),
+                t('home.material.point2', 'Explain relevant compatibility factors and evidence.'),
+                t('home.material.point3', 'Flag cases that require inspection, testing, or professional review.'),
+                t('home.material.point4', 'Keep consequential decisions with qualified practitioners.'),
               ]}
             />
             <p data-reveal className="mt-8 max-w-prose border-l-2 border-laterite-400 pl-4 text-sm leading-relaxed text-ink-700">
-              The example on this page compares two candidate mortars against a lime substrate using rule-based
-              indications from documented material properties, not laboratory results. Photographs alone cannot establish
-              mortar chemistry or structural capacity; the original material must be identified on site before any
-              recommendation is acted on.
+              {t(
+                'home.material.caveat',
+                'The example on this page compares two candidate mortars against a lime substrate using rule-based indications from documented material properties, not laboratory results. Photographs alone cannot establish mortar chemistry or structural capacity; original materials must be identified on site.'
+              )}
             </p>
           </div>
 
@@ -101,7 +110,7 @@ export const MaterialSection: React.FC = () => {
             <div className="border border-ink-900/10 bg-white">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-900/10 px-5 py-4 sm:px-6">
                 <div>
-                  <p className="eyebrow text-ink-600">Substrate</p>
+                  <p className="eyebrow text-ink-600">{t('material.substrate', 'Substrate')}</p>
                   <p className="mt-1 text-sm font-medium text-ink-950">{NAMES[SUBSTRATE]}</p>
                 </div>
                 <p className="eyebrow inline-flex items-center gap-2 text-ink-600" role="status">
@@ -115,9 +124,9 @@ export const MaterialSection: React.FC = () => {
                           : 'bg-ink-500'
                     }`}
                   />
-                  {state.status === 'ready' && 'Live · rule-based engine'}
-                  {state.status === 'loading' && 'Asking the engine…'}
-                  {state.status === 'unavailable' && 'Engine unreachable · showing criteria only'}
+                  {state.status === 'ready' && t('material.liveEngine', 'Live · rule-based engine')}
+                  {state.status === 'loading' && t('material.loadingEngine', 'Asking the engine…')}
+                  {state.status === 'unavailable' && t('material.unavailableEngine', 'Engine unreachable · showing criteria only')}
                 </p>
               </div>
 
@@ -137,14 +146,14 @@ export const MaterialSection: React.FC = () => {
                         <span className="font-display text-4xl font-medium tabular-nums text-ink-950">
                           {Math.round(c.compatibility_score)}
                         </span>
-                        <span className="text-xs text-ink-600">/ 100 compatibility</span>
+                        <span className="text-xs text-ink-600">{t('material.scoreSuffix', '/ 100 compatibility')}</span>
                       </p>
                       <p
                         className={`eyebrow mt-2 ${
                           c.recommendation === 'prohibited_incompatible' ? 'text-danger-500' : 'text-jade-600'
                         }`}
                       >
-                        {recommendationLabel(c.recommendation)}
+                        {getRecommendationLabel(c.recommendation)}
                       </p>
                     </div>
                   ))}
@@ -156,7 +165,7 @@ export const MaterialSection: React.FC = () => {
                 {DIMENSIONS.map((d) => (
                   <li key={d.key} className="grid grid-cols-1 gap-2 px-5 py-4 sm:grid-cols-[9rem_1fr] sm:gap-6 sm:px-6">
                     <div>
-                      <p className="text-sm font-medium text-ink-950">{d.label}</p>
+                      <p className="text-sm font-medium text-ink-950">{t(d.labelKey, d.defaultLabel)}</p>
                       <p className="mt-0.5 text-xs leading-snug text-ink-600">{d.note}</p>
                     </div>
                     {candidates.length > 0 ? (

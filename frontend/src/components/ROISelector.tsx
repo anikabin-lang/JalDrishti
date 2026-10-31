@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { InspectionROI } from '../types';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export interface ROISelectorProps {
   imageSrc: string;
@@ -25,6 +26,7 @@ export const ROISelector: React.FC<ROISelectorProps> = ({
   onChangeROI,
   className = '',
 }) => {
+  const { t } = useLanguage();
   const frameRef = useRef<HTMLDivElement>(null);
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
 
@@ -103,7 +105,7 @@ export const ROISelector: React.FC<ROISelectorProps> = ({
 
       <fieldset className="mt-3">
         <legend className="mb-2 text-[0.8125rem] text-ws-muted">
-          Region in image pixels ({naturalWidth} × {naturalHeight})
+          {t('upload.regionInPixels', 'Region in image pixels')} ({naturalWidth} × {naturalHeight})
         </legend>
         <div className="grid grid-cols-4 gap-2">
           {(['x', 'y', 'width', 'height'] as const).map((key) => (

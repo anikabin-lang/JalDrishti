@@ -1,0 +1,11 @@
+{
+  "mAP50": 0.3877546935366363,
+  "mAP50_95": 0.2645015050613337,
+  "precision": 0.9087475129569453,
+  "recall": 0.33567264585065454,
+  "training_time_seconds": 690.4,
+  "classes": [
+    "crack",
+    "vegetation"
+  ]
+}

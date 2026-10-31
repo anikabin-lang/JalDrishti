@@ -20,6 +20,7 @@ from fastapi import (
     HTTPException,
     Query,
     Request,
+    Response,
     UploadFile,
     status,
 )
@@ -79,6 +80,19 @@ from engineering import (
     get_structure,
     list_structures,
     plan_restoration,
+)
+from backend.app.db.heritage_repository import heritage_repo
+from backend.app.services.document_extraction_service import document_extraction_service
+from backend.app.services.pdf_report_service import pdf_report_service
+from backend.app.schemas.heritage import (
+    DefectObservationItem,
+    DefectPassportItem,
+    DocumentExtractionSummary,
+    InspectionSummary,
+    StructureCreate,
+    StructureSummary,
+    SupportedLanguage,
+    UserLanguagePreference,
 )
 
 logger = logging.getLogger(__name__)
@@ -552,7 +566,10 @@ async def upload_inspection_image(
             detail="Internal error processing image upload.",
         )
 
-    # 5. Assemble persistent metadata
+    # 5. Execute Image Inspection Gate
+    gate_res = vision_service.inspect_image(image_bytes)
+
+    # 6. Assemble persistent metadata
     now_iso = datetime.now(timezone.utc).isoformat()
     thumb_url = upload_res.get("thumbnail_url") or cloudinary_service.build_thumbnail_url(
         upload_res.get("public_id", public_id), format_str
@@ -581,9 +598,14 @@ async def upload_inspection_image(
         or cloudinary_service.build_original_url(
             upload_res.get("public_id", public_id), format_str
         ),
+        inspection_status=gate_res.get("inspection_status", "uploaded"),
+        relevance_confidence=gate_res.get("relevance_confidence"),
+        rejection_reason=gate_res.get("rejection_reason"),
+        needs_manual_review=gate_res.get("needs_manual_review", False),
+        model_version=gate_res.get("model_version"),
     )
 
-    # 6. Durably persist metadata in SQLite
+    # 7. Durably persist metadata in SQLite
     try:
         image_repository.save(metadata)
     except MetadataPersistenceError as e:
@@ -811,4 +833,500 @@ def list_inspection_images(inspection_id: str) -> InspectionImagesListResponse:
         total=len(records),
         images=[r.to_upload_response() for r in records],
     )
+
+
+# ==============================================================================
+# ENTERPRISE FEATURES: 15-LANGUAGE PREFERENCES, STRUCTURES, BASELINE & REPEAT
+# ==============================================================================
+
+
+@api_router.get(
+    "/preferences/language",
+    summary="Get User Language Preference",
+    tags=["Preferences"],
+)
+def get_user_language() -> Dict[str, str]:
+    """Return user's persisted language code out of the 15 supported languages."""
+    return {"language": heritage_repo.get_user_language()}
+
+
+@api_router.put(
+    "/preferences/language",
+    summary="Set User Language Preference",
+    tags=["Preferences"],
+)
+def set_user_language(pref: UserLanguagePreference) -> Dict[str, str]:
+    """Persist user language preference across sessions."""
+    heritage_repo.set_user_language(pref.language.value)
+    return {"language": pref.language.value, "status": "updated"}
+
+
+@api_router.post(
+    "/structures",
+    summary="Register Heritage Structure",
+    tags=["Heritage Structures"],
+)
+def create_structure(payload: StructureCreate) -> Dict[str, Any]:
+    """Create a new heritage structure profile for baseline tracking."""
+    structure = heritage_repo.create_structure(payload.model_dump())
+    return structure
+
+
+@api_router.get(
+    "/structures",
+    summary="List Heritage Structures",
+    tags=["Heritage Structures"],
+)
+def list_heritage_structures() -> List[Dict[str, Any]]:
+    """List all registered heritage structures with defect & inspection counts."""
+    return heritage_repo.list_structures()
+
+
+@api_router.get(
+    "/structures/{structure_id}",
+    summary="Get Heritage Structure Details",
+    tags=["Heritage Structures"],
+)
+def get_heritage_structure(structure_id: str) -> Dict[str, Any]:
+    """Retrieve structure profile, inspection history, and persistent Defect Passports."""
+    structure = heritage_repo.get_structure(structure_id)
+    if not structure:
+        raise HTTPException(status_code=404, detail=f"Structure '{structure_id}' not found.")
+    inspections = heritage_repo.list_structure_inspections(structure_id)
+    passports = heritage_repo.list_defect_passports(structure_id)
+    return {
+        "structure": structure,
+        "inspections": inspections,
+        "passports": passports,
+    }
+
+
+@api_router.post(
+    "/structures/{structure_id}/inspections/baseline",
+    summary="Execute Baseline Heritage Inspection (Min 3 Photos Required)",
+    tags=["Inspections"],
+)
+async def execute_baseline_inspection(
+    structure_id: str,
+    files: List[UploadFile] = File(...),
+) -> Dict[str, Any]:
+    """Execute mandatory 3-photo baseline inspection with independent AI processing.
+
+    Enforces minimum 3 photographs. Validates image quality and heritage relevance
+    gates on every photo independently. Creates persistent Defect Passports for
+    detected cracks and vegetation. Rejects baseline finalization if <3 valid photos.
+    """
+    structure = heritage_repo.get_structure(structure_id)
+    if not structure:
+        raise HTTPException(status_code=404, detail=f"Structure '{structure_id}' not found.")
+
+    if len(files) < 3:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Baseline inspection requires a mandatory minimum of 3 photographs. Received {len(files)}.",
+        )
+
+    inspection_id = heritage_repo.create_inspection(structure_id, inspection_type="baseline")
+
+    processed_images: List[Dict[str, Any]] = []
+    created_defects: List[Dict[str, Any]] = []
+    total_cracks = 0
+    total_veg = 0
+    valid_count = 0
+
+    for idx, upload in enumerate(files, start=1):
+        content = await upload.read()
+        image_id = f"img_{uuid.uuid4().hex[:10]}"
+
+        # 1. Independent Inspection Gate (Quality & Heritage Relevance)
+        gate_res = vision_service.inspect_image(content)
+
+        if gate_res.get("inspection_status") in ("rejected", "uncertain"):
+            # Image rejected or held for manual review by quality or relevance gate
+            status_val = gate_res.get("inspection_status", "rejected")
+            img_rec = {
+                "image_id": image_id,
+                "inspection_id": inspection_id,
+                "structure_id": structure_id,
+                "original_filename": upload.filename or f"image_{idx}.jpg",
+                "quality_status": gate_res.get("quality_status", "unknown"),
+                "relevance_status": gate_res.get("decision", "unknown").lower(),
+                "relevance_confidence": gate_res.get("relevance_confidence", 0.0),
+                "inspection_status": status_val,
+                "rejection_reason": gate_res.get("rejection_reason") or gate_res.get("status_message") or (
+                    "Image requires manual expert review" if status_val == "uncertain" else "Failed heritage inspection gate"
+                ),
+                "results_json": {"inspection_gate": gate_res},
+                "image_order": idx,
+            }
+            heritage_repo.add_inspection_image(img_rec)
+            processed_images.append(img_rec)
+            continue
+
+        # 2. Independent Crack and Vegetation Detection
+        analysis_res = vision_service.analyze_image(
+            content,
+            structure_type=structure.get("typology", "baoli"),
+        )
+        valid_count += 1
+
+        # 3. Create Persistent Defect Passports
+        detections = analysis_res.detections
+        img_cracks = 0
+        img_veg = 0
+        for det in detections:
+            cat = "crack" if "crack" in det.class_name.lower() else "vegetation"
+            if cat == "crack":
+                img_cracks += 1
+                total_cracks += 1
+            else:
+                img_veg += 1
+                total_veg += 1
+
+            passport = heritage_repo.create_defect_passport({
+                "structure_id": structure_id,
+                "defect_category": cat,
+                "original_inspection_id": inspection_id,
+                "original_image_id": image_id,
+                "bounding_box": det.bounding_box,
+                "confidence": det.confidence,
+                "severity": det.relative_severity or "moderate",
+                "status": "active",
+                "verification_status": "ai_detected",
+                "repair_notes": f"Detected in baseline photo {upload.filename}",
+            })
+            created_defects.append(passport)
+
+        img_rec = {
+            "image_id": image_id,
+            "inspection_id": inspection_id,
+            "structure_id": structure_id,
+            "original_filename": upload.filename or f"image_{idx}.jpg",
+            "quality_status": "good",
+            "relevance_status": "relevant",
+            "relevance_confidence": gate_res.get("relevance_confidence", 1.0),
+            "inspection_status": "accepted",
+            "rejection_reason": None,
+            "results_json": analysis_res.model_dump(),
+            "image_order": idx,
+        }
+        heritage_repo.add_inspection_image(img_rec)
+        processed_images.append(img_rec)
+
+    # 4. Mandatory 3 Valid Heritage Photos Rule Check
+    if valid_count < 3:
+        summary_data = {
+            "status": "incomplete_insufficient_valid_images",
+            "total_images": len(files),
+            "valid_images": valid_count,
+            "rejected_images": len(files) - valid_count,
+            "total_cracks": total_cracks,
+            "vegetation_count": total_veg,
+            "message": f"Baseline inspection could not be finalized: only {valid_count} of {len(files)} uploaded photos passed quality and heritage relevance checks. At least 3 valid photos are required.",
+        }
+        return {
+            "inspection_id": inspection_id,
+            "structure_id": structure_id,
+            "status": "incomplete",
+            "baseline_completed": False,
+            "summary": summary_data,
+            "images": processed_images,
+            "defects_registered": len(created_defects),
+        }
+
+    # Finalize baseline inspection
+    summary_data = {
+        "status": "completed",
+        "total_images": len(files),
+        "valid_images": valid_count,
+        "rejected_images": len(files) - valid_count,
+        "total_cracks": total_cracks,
+        "vegetation_count": total_veg,
+        "message": f"Baseline inspection completed successfully with {valid_count} verified heritage photos.",
+    }
+    heritage_repo.finalize_inspection(inspection_id, summary_data)
+
+    return {
+        "inspection_id": inspection_id,
+        "structure_id": structure_id,
+        "status": "completed",
+        "baseline_completed": True,
+        "summary": summary_data,
+        "images": processed_images,
+        "defects_registered": len(created_defects),
+        "passports": created_defects,
+    }
+
+
+@api_router.post(
+    "/structures/{structure_id}/inspections/repeat",
+    summary="Execute Repeat Inspection with Defect Evolution Tracking",
+    tags=["Inspections"],
+)
+async def execute_repeat_inspection(
+    structure_id: str,
+    files: List[UploadFile] = File(...),
+) -> Dict[str, Any]:
+    """Execute repeat inspection matching against existing Defect Passports."""
+    structure = heritage_repo.get_structure(structure_id)
+    if not structure:
+        raise HTTPException(status_code=404, detail=f"Structure '{structure_id}' not found.")
+
+    existing_passports = heritage_repo.list_defect_passports(structure_id)
+    inspection_id = heritage_repo.create_inspection(structure_id, inspection_type="repeat")
+
+    processed_images: List[Dict[str, Any]] = []
+    matched_observations: List[Dict[str, Any]] = []
+    new_defects: List[Dict[str, Any]] = []
+    total_cracks = 0
+    total_veg = 0
+    valid_count = 0
+
+    for idx, upload in enumerate(files, start=1):
+        content = await upload.read()
+        image_id = f"img_{uuid.uuid4().hex[:10]}"
+
+        gate_res = vision_service.inspect_image(content)
+        if gate_res.get("inspection_status") in ("rejected", "uncertain"):
+            status_val = gate_res.get("inspection_status", "rejected")
+            img_rec = {
+                "image_id": image_id,
+                "inspection_id": inspection_id,
+                "structure_id": structure_id,
+                "original_filename": upload.filename or f"image_{idx}.jpg",
+                "quality_status": gate_res.get("quality_status", "unknown"),
+                "relevance_status": gate_res.get("decision", "unknown").lower(),
+                "relevance_confidence": gate_res.get("relevance_confidence", 0.0),
+                "inspection_status": status_val,
+                "rejection_reason": gate_res.get("rejection_reason") or gate_res.get("status_message") or (
+                    "Image requires manual expert review" if status_val == "uncertain" else "Failed heritage inspection gate"
+                ),
+                "results_json": {"inspection_gate": gate_res},
+                "image_order": idx,
+            }
+            heritage_repo.add_inspection_image(img_rec)
+            processed_images.append(img_rec)
+            continue
+
+        analysis_res = vision_service.analyze_image(
+            content,
+            structure_type=structure.get("typology", "baoli"),
+        )
+        valid_count += 1
+
+        for det in analysis_res.detections:
+            cat = "crack" if "crack" in det.class_name.lower() else "vegetation"
+            if cat == "crack":
+                total_cracks += 1
+            else:
+                total_veg += 1
+
+            # Match against existing passports
+            matched_passport = None
+            for p in existing_passports:
+                if p["defect_category"] == cat:
+                    pb = p["bounding_box"]
+                    db = det.bounding_box
+                    # Check box center distance proximity
+                    if len(pb) == 4 and len(db) == 4:
+                        pcx, pcy = (pb[0] + pb[2]) / 2, (pb[1] + pb[3]) / 2
+                        dcx, dcy = (db[0] + db[2]) / 2, (db[1] + db[3]) / 2
+                        dist = ((pcx - dcx) ** 2 + (pcy - dcy) ** 2) ** 0.5
+                        if dist < 120.0:
+                            matched_passport = p
+                            break
+
+            if matched_passport:
+                obs_id = heritage_repo.record_defect_observation({
+                    "defect_id": matched_passport["defect_id"],
+                    "inspection_id": inspection_id,
+                    "image_id": image_id,
+                    "bounding_box": det.bounding_box,
+                    "confidence": det.confidence,
+                    "observed_status": "stable",
+                    "notes": f"Confirmed active in repeat survey photo {upload.filename}",
+                })
+                matched_observations.append({
+                    "observation_id": obs_id,
+                    "defect_id": matched_passport["defect_id"],
+                    "evolution": "stable",
+                })
+            else:
+                new_p = heritage_repo.create_defect_passport({
+                    "structure_id": structure_id,
+                    "defect_category": cat,
+                    "original_inspection_id": inspection_id,
+                    "original_image_id": image_id,
+                    "bounding_box": det.bounding_box,
+                    "confidence": det.confidence,
+                    "severity": det.relative_severity or "moderate",
+                    "status": "active",
+                    "verification_status": "ai_detected",
+                    "repair_notes": f"Newly appeared in repeat survey photo {upload.filename}",
+                })
+                new_defects.append(new_p)
+
+        img_rec = {
+            "image_id": image_id,
+            "inspection_id": inspection_id,
+            "structure_id": structure_id,
+            "original_filename": upload.filename or f"image_{idx}.jpg",
+            "quality_status": "good",
+            "relevance_status": "relevant",
+            "relevance_confidence": gate_res.get("relevance_confidence", 1.0),
+            "inspection_status": "accepted",
+            "rejection_reason": None,
+            "results_json": analysis_res.model_dump(),
+            "image_order": idx,
+        }
+        heritage_repo.add_inspection_image(img_rec)
+        processed_images.append(img_rec)
+
+    summary_data = {
+        "status": "completed",
+        "total_images": len(files),
+        "valid_images": valid_count,
+        "rejected_images": len(files) - valid_count,
+        "total_cracks": total_cracks,
+        "vegetation_count": total_veg,
+        "matched_defects": len(matched_observations),
+        "new_defects": len(new_defects),
+    }
+    heritage_repo.finalize_inspection(inspection_id, summary_data)
+
+    return {
+        "inspection_id": inspection_id,
+        "structure_id": structure_id,
+        "status": "completed",
+        "summary": summary_data,
+        "matched_observations": matched_observations,
+        "new_defects": new_defects,
+        "images": processed_images,
+    }
+
+
+@api_router.get(
+    "/inspections/{inspection_id}",
+    summary="Get Detailed Inspection Record",
+    tags=["Inspections"],
+)
+def get_inspection_record(inspection_id: str) -> Dict[str, Any]:
+    """Retrieve full details of an inspection session with all images and summary."""
+    if inspection_id == "latest":
+        with heritage_repo._get_connection() as conn:
+            row = conn.execute("SELECT inspection_id FROM inspections ORDER BY created_at DESC LIMIT 1").fetchone()
+            if row:
+                inspection_id = row["inspection_id"]
+
+    insp = heritage_repo.get_inspection(inspection_id)
+    if not insp:
+        raise HTTPException(status_code=404, detail=f"Inspection '{inspection_id}' not found.")
+    return insp
+
+
+@api_router.get(
+    "/inspections/{inspection_id}/pdf",
+    summary="Export Inspection Report as Multilingual PDF",
+    tags=["Reports"],
+)
+def export_inspection_pdf(
+    inspection_id: str,
+    lang: Optional[str] = Query(default=None, description="One of 15 supported languages (en, hi, bn, te, mr, ta, ur, gu, kn, ml, or, pa, as, ks, sa)"),
+) -> Response:
+    """Generate and return official conservation PDF dossier in the selected language."""
+    if inspection_id == "latest":
+        with heritage_repo._get_connection() as conn:
+            row = conn.execute("SELECT inspection_id FROM inspections ORDER BY created_at DESC LIMIT 1").fetchone()
+            if row:
+                inspection_id = row["inspection_id"]
+
+    insp = heritage_repo.get_inspection(inspection_id)
+    if not insp:
+        raise HTTPException(status_code=404, detail=f"Inspection '{inspection_id}' not found.")
+    structure = heritage_repo.get_structure(insp["structure_id"]) or {}
+    passports = heritage_repo.list_defect_passports(insp["structure_id"])
+
+    target_lang = lang or heritage_repo.get_user_language() or "en"
+    pdf_bytes = pdf_report_service.generate_inspection_pdf(structure, insp, passports, lang=target_lang)
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=jaldrishti_{insp['structure_id']}_{inspection_id}_{target_lang}.pdf"
+        },
+    )
+
+
+@api_router.post(
+    "/structures/{structure_id}/documents/upload",
+    summary="Upload and Extract Historical Survey PDF",
+    tags=["Historical Documents"],
+)
+async def upload_historical_survey(
+    structure_id: str,
+    file: UploadFile = File(...),
+) -> Dict[str, Any]:
+    """Parse historical survey PDF, extract past defects, dates, recommendations and photographs."""
+    structure = heritage_repo.get_structure(structure_id)
+    if not structure:
+        raise HTTPException(status_code=404, detail=f"Structure '{structure_id}' not found.")
+
+    if not (file.filename or "").lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF survey documents are supported.")
+
+    content = await file.read()
+    extraction = document_extraction_service.extract_from_pdf_bytes(
+        content,
+        filename=file.filename or "historical_survey.pdf",
+        structure_id=structure_id,
+    )
+
+    doc_id = heritage_repo.save_document_record({
+        "structure_id": structure_id,
+        "filename": file.filename or "historical_survey.pdf",
+        "file_path": "",
+        "extracted_data": extraction,
+    })
+    extraction["document_id"] = doc_id
+    return extraction
+
+
+@api_router.post(
+    "/structures/{structure_id}/documents/{document_id}/import-defects",
+    summary="Confirm and Import Historical Defects into Defect Passports",
+    tags=["Historical Documents"],
+)
+def import_historical_defects(
+    structure_id: str,
+    document_id: str,
+    confirmed_defects: List[Dict[str, Any]] = Body(...),
+) -> Dict[str, Any]:
+    """Allow conservation architect to confirm and import historical defects into permanent Defect Passports."""
+    doc = heritage_repo.get_document_record(document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail=f"Document '{document_id}' not found.")
+
+    imported_passports = []
+    for defect in confirmed_defects:
+        passport = heritage_repo.create_defect_passport({
+            "structure_id": structure_id,
+            "defect_category": defect.get("category", "crack"),
+            "original_inspection_id": document_id,
+            "original_image_id": f"{document_id}_p{defect.get('page_number', 1)}",
+            "bounding_box": [0.0, 0.0, 100.0, 100.0],
+            "confidence": 0.90,
+            "severity": defect.get("severity", "moderate"),
+            "status": "active",
+            "verification_status": "human_verified",
+            "repair_notes": defect.get("description", "Imported from historical survey archive"),
+        })
+        imported_passports.append(passport)
+
+    return {
+        "status": "success",
+        "imported_count": len(imported_passports),
+        "passports": imported_passports,
+    }
+
 

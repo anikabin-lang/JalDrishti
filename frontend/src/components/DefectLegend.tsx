@@ -1,6 +1,7 @@
 import React from 'react';
 import { DetectionItem } from '../types';
 import { defectColor, humanize } from '../utils/analysis';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export interface DefectLegendProps {
   detections: DetectionItem[];
@@ -11,6 +12,7 @@ export interface DefectLegendProps {
 
 /** Per-class visibility toggles with a colour key and detection count. */
 export const DefectLegend: React.FC<DefectLegendProps> = ({ detections, visibleClasses, onToggleClass, className = '' }) => {
+  const { t } = useLanguage();
   const counts = detections.reduce<Record<string, number>>((acc, d) => {
     acc[d.class_name] = (acc[d.class_name] ?? 0) + 1;
     return acc;
@@ -38,7 +40,7 @@ export const DefectLegend: React.FC<DefectLegendProps> = ({ detections, visibleC
               style={{ backgroundColor: on ? defectColor(name) : 'transparent', borderColor: defectColor(name) }}
               aria-hidden="true"
             />
-            {humanize(name)}
+            {t('defect.' + name, humanize(name))}
             <span className="font-mono text-ink-500 tabular-nums">{counts[name]}</span>
           </button>
         );

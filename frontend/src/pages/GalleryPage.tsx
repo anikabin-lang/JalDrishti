@@ -18,6 +18,7 @@ import {
   searchCloudinaryAssets,
   submitAnalysisRequest,
 } from '../services/api';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export interface GalleryPageProps {
   onRouteChange: (route: AppRoute) => void;
@@ -59,6 +60,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
   onRouteChange,
   onInspectionComplete,
 }) => {
+  const { t } = useLanguage();
   const [viewMode, setViewMode] = useState<ViewMode>('catalog');
   const [images, setImages] = useState<HeritageImageSummary[]>([]);
   const [sites, setSites] = useState<SiteSummary[]>([]);
@@ -270,8 +272,8 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
 
   return (
     <PageContainer
-      title="Heritage Image Archive & Survey Gallery"
-      subtitle="Complete lifecycle management of water heritage inspection imagery powered by Cloudinary."
+      title={t('gallery.title', 'Heritage Image Archive & Survey Gallery')}
+      subtitle={t('gallery.subtitle', 'Complete lifecycle management of water heritage inspection imagery powered by Cloudinary.')}
       className="pb-24"
     >
       {/* Top Controls & Navigation Bar */}
@@ -283,10 +285,10 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
                 Section 05
               </span>
               <span className="h-1 w-1 rounded-full bg-ws-border" />
-              <span className="text-xs text-amber-500 font-medium">Cloudinary Asset Management</span>
+              <span className="text-xs text-amber-500 font-medium">{t('gallery.heading', 'Cloudinary Asset Management')}</span>
             </div>
             <h2 className="mt-1 font-display text-2xl font-light text-ws-text">
-              Inspection Photographs & Cloud Storage
+              {t('gallery.heading', 'Inspection Photographs & Cloud Storage')}
             </h2>
           </div>
 
@@ -304,7 +306,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
                     : 'text-ws-muted hover:text-ws-text'
                 }`}
               >
-                Database Catalog
+                {t('gallery.databaseCatalog', 'Database Catalog')}
               </button>
               <button
                 type="button"
@@ -318,7 +320,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
                     : 'text-ws-muted hover:text-ws-text'
                 }`}
               >
-                Cloudinary Live Search
+                {t('gallery.cloudSearch', 'Cloudinary Live Search')}
               </button>
             </div>
 
@@ -328,7 +330,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
               icon={<Icon name="upload" className="h-4 w-4" />}
               onClick={() => onRouteChange('/upload')}
             >
-              Upload New
+              {t('gallery.uploadNew', 'Upload New')}
             </Button>
           </div>
         </div>
@@ -352,7 +354,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
           {/* Site Selector */}
           <div>
             <label htmlFor="site-select" className="mb-1 block text-xs font-mono uppercase text-ws-faint">
-              Heritage Site
+              {t('gallery.siteLabel', 'Heritage Site')}
             </label>
             <select
               id="site-select"
@@ -363,10 +365,10 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
               }}
               className="w-full rounded-lg border border-ws-border bg-ws-card px-3 py-2 text-xs text-ws-text focus:border-ws-text focus:outline-none"
             >
-              <option value="all">All Sites ({totalCount})</option>
+              <option value="all">{t('gallery.allSites', 'All Sites')} ({totalCount})</option>
               {sites.map((s) => (
                 <option key={s.site_id} value={s.site_id}>
-                  {s.site_name} ({s.total_images} photos)
+                  {s.site_name} ({s.total_images} {t('gallery.photos', 'photos')})
                 </option>
               ))}
             </select>
@@ -375,7 +377,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
           {/* Typology Selector */}
           <div>
             <label htmlFor="typology-select" className="mb-1 block text-xs font-mono uppercase text-ws-faint">
-              Structure Typology
+              {t('gallery.typologyLabel', 'Structure Typology')}
             </label>
             <select
               id="typology-select"
@@ -386,9 +388,9 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
               }}
               className="w-full rounded-lg border border-ws-border bg-ws-card px-3 py-2 text-xs text-ws-text focus:border-ws-text focus:outline-none"
             >
-              {TYPOLOGY_FILTERS.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
+              {TYPOLOGY_FILTERS.map((top) => (
+                <option key={top.value} value={top.value}>
+                  {top.value === 'all' ? t('gallery.allTypologies', 'All Typologies') : t('typology.' + top.value, top.label)}
                 </option>
               ))}
             </select>
@@ -397,7 +399,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
           {/* Search Keywords */}
           <div className="sm:col-span-2">
             <label htmlFor="search-input" className="mb-1 block text-xs font-mono uppercase text-ws-faint">
-              Search by ID, File, or Session
+              {t('gallery.searchLabel', 'Search by ID, File, or Session')}
             </label>
             <div className="flex gap-2">
               <input
@@ -414,7 +416,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
                   size="sm"
                   onClick={() => setSearchQuery('')}
                 >
-                  Clear
+                  {t('common.cancel', 'Clear')}
                 </Button>
               )}
             </div>
@@ -425,14 +427,14 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
       {/* Main Content Area: Loading, Error, Empty, or Grid */}
       {loading ? (
         <div className="py-16">
-          <LoadingState label="Fetching Cloudinary heritage assets..." />
+          <LoadingState label={t('gallery.loading', 'Fetching Cloudinary heritage assets...')} />
         </div>
       ) : error ? (
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-6 text-center">
           <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-rose-500/20 text-rose-400">
             <Icon name="alert" className="h-5 w-5" />
           </div>
-          <h3 className="text-sm font-medium text-rose-300">Unable to load image gallery</h3>
+          <h3 className="text-sm font-medium text-rose-300">{t('gallery.loadError', 'Unable to load image gallery')}</h3>
           <p className="mt-1 text-xs text-rose-200/70">{error}</p>
           <div className="mt-4 flex justify-center gap-3">
             <Button
@@ -440,21 +442,21 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
               size="sm"
               onClick={() => (viewMode === 'catalog' ? void loadCatalogImages() : void loadCloudSearchImages())}
             >
-              Try Again
+              {t('common.tryAgain', 'Try Again')}
             </Button>
             <Button variant="primary" size="sm" onClick={() => onRouteChange('/upload')}>
-              Go to Upload
+              {t('analysis.startInspection', 'Go to Upload')}
             </Button>
           </div>
         </div>
       ) : images.length === 0 ? (
         <EmptyState
           visual={<Icon name="image" className="mb-4 h-10 w-10 text-ws-muted" />}
-          title="No inspection images found"
+          title={t('gallery.noImagesFound', 'No inspection images found')}
           description={
             selectedSite !== 'all' || selectedTypology !== 'all' || searchQuery
-              ? 'No photographs match your active filter criteria. Try resetting filters.'
-              : 'Start your heritage conservation campaign by uploading photographs for AI defect inspection.'
+              ? t('gallery.noImagesFiltered', 'No photographs match your active filter criteria. Try resetting filters.')
+              : t('gallery.noImagesUploadPrompt', 'Start your heritage conservation campaign by uploading photographs for AI defect inspection.')
           }
           actions={
             <div className="flex gap-2">
@@ -468,7 +470,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
                     setSearchQuery('');
                   }}
                 >
-                  Reset Filters
+                  {t('gallery.resetFilters', 'Reset Filters')}
                 </Button>
               )}
               <Button
@@ -477,7 +479,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
                 icon={<Icon name="upload" className="h-4 w-4" />}
                 onClick={() => onRouteChange('/upload')}
               >
-                Upload First Image
+                {t('gallery.uploadFirst', 'Upload First Image')}
               </Button>
             </div>
           }
@@ -518,7 +520,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
                       type="button"
                       onClick={() => setInspectedImage(img)}
                       className="absolute right-2 top-2 rounded bg-black/60 p-1.5 text-white opacity-0 transition-opacity hover:bg-black/90 group-hover:opacity-100"
-                      title="Inspect Original Asset"
+                      title={t('gallery.viewFull', 'View Full Resolution Original')}
                     >
                       <Icon name="crop" className="h-4 w-4" />
                     </button>
@@ -528,7 +530,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
                   <div className="flex flex-1 flex-col p-4">
                     <div className="flex items-center justify-between gap-2">
                       <span className="rounded bg-ws-border/40 px-2 py-0.5 font-mono text-[0.6875rem] uppercase text-ws-muted">
-                        {img.structure_type || 'baoli'}
+                        {t('typology.' + (img.structure_type || 'baoli'), img.structure_type || 'baoli')}
                       </span>
                       <span className="font-mono text-[0.6875rem] text-ws-faint">
                         {formatBytes(img.bytes)}
@@ -569,14 +571,14 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
                           )
                         }
                       >
-                        {isAnalyzing ? 'Analyzing...' : 'Inspect AI'}
+                        {isAnalyzing ? t('gallery.analyzing', 'Analyzing...') : t('gallery.inspectAi', 'Inspect AI')}
                       </Button>
 
                       <button
                         type="button"
                         onClick={() => setInspectedImage(img)}
                         className="rounded-lg border border-ws-border p-2 text-ws-muted hover:border-ws-text hover:text-ws-text"
-                        title="View Full Resolution Original"
+                        title={t('gallery.viewFull', 'View Full Resolution Original')}
                       >
                         <Icon name="external" className="h-4 w-4" />
                       </button>
@@ -586,7 +588,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
                         disabled={isDeleting}
                         onClick={() => void handleDeleteImage(img)}
                         className="rounded-lg border border-ws-border p-2 text-ws-muted hover:border-rose-500 hover:text-rose-400"
-                        title="Delete Asset from Cloudinary"
+                        title={t('gallery.deleteAsset', 'Delete Asset from Cloudinary')}
                       >
                         {isDeleting ? (
                           <Icon name="refresh" className="h-4 w-4 animate-spin" />
@@ -604,7 +606,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
           {/* Pagination bar */}
           <div className="flex items-center justify-between border-t border-ws-border pt-4">
             <span className="font-mono text-xs text-ws-faint">
-              Showing {images.length} of {totalCount} assets
+              {t('gallery.showing', 'Showing')} {images.length} {t('gallery.ofAssets', 'of')} {totalCount}
             </span>
 
             <div className="flex gap-2">
@@ -615,7 +617,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
                 onClick={() => setPageOffset((prev) => Math.max(0, prev - pageSize))}
                 icon={<Icon name="arrowLeft" className="h-3.5 w-3.5" />}
               >
-                Previous
+                {t('gallery.previous', 'Previous')}
               </Button>
               <Button
                 variant="secondary"
@@ -624,7 +626,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
                 onClick={() => setPageOffset((prev) => prev + pageSize)}
                 icon={<Icon name="arrowRight" className="h-3.5 w-3.5" />}
               >
-                Next
+                {t('gallery.next', 'Next')}
               </Button>
             </div>
           </div>
@@ -675,21 +677,21 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
             <div className="flex flex-col gap-4 border-t border-ws-border bg-ws-bg px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs sm:grid-cols-4">
                 <div>
-                  <span className="text-ws-faint">Dimensions:</span>{' '}
+                  <span className="text-ws-faint">{t('gallery.dimensions', 'Dimensions')}:</span>{' '}
                   <span className="font-mono text-ws-text">
                     {inspectedImage.width} × {inspectedImage.height}
                   </span>
                 </div>
                 <div>
-                  <span className="text-ws-faint">Format:</span>{' '}
+                  <span className="text-ws-faint">{t('gallery.format', 'Format')}:</span>{' '}
                   <span className="font-mono uppercase text-ws-text">{inspectedImage.format}</span>
                 </div>
                 <div>
-                  <span className="text-ws-faint">File Size:</span>{' '}
+                  <span className="text-ws-faint">{t('gallery.fileSize', 'File Size')}:</span>{' '}
                   <span className="font-mono text-ws-text">{formatBytes(inspectedImage.bytes)}</span>
                 </div>
                 <div>
-                  <span className="text-ws-faint">Uploaded:</span>{' '}
+                  <span className="text-ws-faint">{t('gallery.uploaded', 'Uploaded')}:</span>{' '}
                   <span className="font-mono text-ws-text">{formatDate(inspectedImage.created_at)}</span>
                 </div>
               </div>
@@ -702,7 +704,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
                   className="inline-flex items-center gap-1.5 rounded-lg border border-ws-border px-3 py-1.5 text-xs text-ws-text transition hover:bg-ws-card"
                 >
                   <Icon name="external" className="h-3.5 w-3.5" />
-                  Open Raw Link
+                  {t('gallery.openRaw', 'Open Raw Link')}
                 </a>
                 <Button
                   variant="primary"
@@ -713,7 +715,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
                   }}
                   icon={<Icon name="arrowRight" className="h-3.5 w-3.5" />}
                 >
-                  Run Vision AI
+                  {t('gallery.runVision', 'Run Vision AI')}
                 </Button>
               </div>
             </div>

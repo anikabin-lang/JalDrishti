@@ -17,6 +17,9 @@ const PATHS = {
   crop: 'M7 3v14h14M3 7h14v14',
   book: 'M5 4.75A1.75 1.75 0 0 1 6.75 3H19v15H6.75A1.75 1.75 0 0 0 5 19.75m0-15v15m0 0A1.75 1.75 0 0 0 6.75 21H19',
   external: 'M14 4h6v6m0-6-8.5 8.5M18 14v4.25c0 .97-.78 1.75-1.75 1.75h-10.5C4.78 20 4 19.22 4 18.25V7.75C4 6.78 4.78 6 5.75 6H10',
+  plus: 'M12 5v14m-7-7h14',
+  download: 'M12 4v12m0 0-4-4m4 4 4-4M4 18v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2',
+  document: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6',
 } as const;
 
 export type IconName = keyof typeof PATHS;

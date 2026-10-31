@@ -2,6 +2,7 @@ import React from 'react';
 import { SectionIndex } from './SectionIndex';
 import { PointList } from './StorySections';
 import { JalDrishtiLogo } from '../JalDrishtiLogo';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { AppRoute } from '../../types';
 
 const WORKFLOW = [
@@ -64,134 +65,150 @@ const go = (onRouteChange: (route: AppRoute) => void, route: AppRoute) => (e: Re
 };
 
 /** B — SEE: the inspection workflow as it exists today. */
-export const SeeSection: React.FC<{ onRouteChange: (route: AppRoute) => void }> = ({ onRouteChange }) => (
-  <section aria-labelledby="see-title" className="gutter grain bg-stone-50 py-28 sm:py-36">
-    <div className="mx-auto grid max-w-wide grid-cols-1 gap-16 lg:grid-cols-12 lg:gap-10">
-      <div className="lg:col-span-5">
-        <SectionIndex number="01" label="See" />
-        <h2 id="see-title" data-reveal="mask" className="mt-10 font-display text-display-lg font-medium text-ink-950">
-          Make the visible condition easier to document.
-        </h2>
-        <p data-reveal className="mt-8 max-w-prose text-[1.0625rem] leading-relaxed text-ink-700">
-          JalDrishti&rsquo;s AI-assisted vision workflow aims to help organise observable patterns from inspection
-          imagery. By making visual evidence easier to review and document, it can support a more structured starting
-          point for understanding a heritage structure.
-        </p>
-        <PointList
-          className="mt-10"
-          points={[
-            'Record site photographs and observations.',
-            'Identify candidate areas of concern where the implemented model supports them.',
-            'Keep visual evidence connected to the relevant inspection.',
-            'Distinguish model-generated observations from expert-confirmed findings.',
-          ]}
-        />
-        <p data-reveal className="eyebrow mt-8 inline-flex items-center gap-2 text-ink-700">
-          <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-jade-500" />
-          Live today: a pilot YOLOv8n model that looks for cracks
-        </p>
-        <p data-reveal className="mt-3 max-w-prose text-sm leading-relaxed text-ink-600">
-          It has not been validated across every type of water structure, and image-based observations cannot
-          establish structural stability, hidden defects or material chemistry.
-        </p>
-        <div data-reveal className="mt-8 flex flex-wrap gap-3">
-          <a href="/upload" onClick={go(onRouteChange, '/upload')} className="btn-primary">
-            Start an inspection
-          </a>
-        </div>
-      </div>
-
-      <div className="lg:col-span-7 lg:pt-20">
-        <figure data-reveal className="border border-ink-900/10 bg-white p-5 text-ink-900 sm:p-8">
-          <WorkspaceSchematic />
-          <figcaption className="mt-4 font-mono text-[11px] tracking-wide text-ink-600">
-            SCHEMATIC · In the findings workspace, results are labelled as model output, rule-based results, or items
-            needing expert verification.
-          </figcaption>
-        </figure>
-        <ol className="mt-10 grid grid-cols-1 border-t border-ink-900/15 sm:grid-cols-5" aria-label="Inspection workflow">
-          {WORKFLOW.map((w, i) => (
-            <li
-              key={w.step}
-              data-reveal
-              style={{ '--reveal-delay': `${i * 70}ms` } as React.CSSProperties}
-              className={`grid grid-cols-[2.5rem_5.5rem_1fr] items-baseline gap-x-3 border-b border-ink-900/15 py-4 sm:block sm:border-b-0 sm:py-5 sm:pr-4 ${
-                i ? 'sm:border-l sm:pl-4' : ''
-              }`}
-            >
-              <span className="eyebrow text-laterite-500">{String(i + 1).padStart(2, '0')}</span>
-              <span className="text-sm font-semibold text-ink-950 sm:mt-3 sm:block">{w.step}</span>
-              <span className="text-[0.8125rem] leading-relaxed text-ink-700 sm:mt-1.5 sm:block">{w.body}</span>
-            </li>
-          ))}
-        </ol>
-      </div>
-    </div>
-  </section>
-);
-
-/** G — Final call to action, then the footer. */
-export const ClosingSection: React.FC<{ onRouteChange: (route: AppRoute) => void }> = ({ onRouteChange }) => (
-  <footer className="gutter bg-ink-950 pb-10 pt-28 text-stone-100 sm:pt-40">
-    <div className="mx-auto max-w-wide">
-      <section aria-labelledby="closing-title" className="max-w-[52rem]">
-        <p data-reveal className="font-deva text-2xl text-stone-400" lang="hi">
-          जल ही जीवन है
-        </p>
-        <h2 id="closing-title" data-reveal="mask" className="mt-6 font-display text-display-lg font-medium text-stone-50">
-          Every water heritage structure deserves to be understood in its own context.
-        </h2>
-        <p data-reveal className="mt-8 max-w-[38rem] text-lg leading-relaxed text-stone-300">
-          Begin with what can be documented. Connect it with what is known. Build a clearer basis for considering how
-          it should be cared for.
-        </p>
-        <div data-reveal className="mt-10 flex flex-wrap gap-3">
-          <a href="/upload" onClick={go(onRouteChange, '/upload')} className="btn-light">
-            Start an inspection
-          </a>
-          <a href="/knowledge" onClick={go(onRouteChange, '/knowledge')} className="btn-ghost-light">
-            Explore knowledge
-          </a>
-        </div>
-      </section>
-
-      <div className="mt-28 grid grid-cols-1 gap-10 border-t border-stone-50/15 pt-10 md:grid-cols-12">
-        <div className="md:col-span-5">
-          <JalDrishtiLogo tone="light" showDevanagari />
-          <p className="mt-6 max-w-[40ch] text-sm leading-relaxed text-stone-400">
-            AI-assisted digital conservation for India&rsquo;s traditional water structures. JalDrishti supports — and
-            does not replace — assessment by qualified conservation professionals.
+export const SeeSection: React.FC<{ onRouteChange: (route: AppRoute) => void }> = ({ onRouteChange }) => {
+  const { t } = useLanguage();
+  return (
+    <section aria-labelledby="see-title" className="gutter grain bg-stone-50 py-28 sm:py-36">
+      <div className="mx-auto grid max-w-wide grid-cols-1 gap-16 lg:grid-cols-12 lg:gap-10">
+        <div className="lg:col-span-5">
+          <SectionIndex number="01" label={t('home.see.label', 'See')} /* label="See" */ />
+          <h2 id="see-title" data-reveal="mask" className="mt-10 font-display text-display-lg font-medium text-ink-950">
+            {t('home.see.title', 'Make the visible condition easier to document.')}
+          </h2>
+          <p data-reveal className="mt-8 max-w-prose text-[1.0625rem] leading-relaxed text-ink-700">
+            {t(
+              'home.see.lead',
+              'JalDrishti’s AI-assisted vision workflow aims to help organise observable patterns from inspection imagery. By making visual evidence easier to review and document, it can support a more structured starting point for understanding a heritage structure.'
+            )}
           </p>
+          <PointList
+            className="mt-10"
+            points={[
+              t('home.see.point1', 'Record site photographs and observations.'),
+              t('home.see.point2', 'Identify candidate areas of concern where the implemented model supports them.'),
+              t('home.see.point3', 'Keep visual evidence connected to the relevant inspection.'),
+              t('home.see.point4', 'Distinguish model-generated observations from expert-confirmed findings.'),
+            ]}
+          />
+          <p data-reveal className="eyebrow mt-8 inline-flex items-center gap-2 text-ink-700">
+            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-jade-500" />
+            {t('home.see.liveBadge', 'Live today: fine-tuned Faster R-CNN & unified YOLO26n damage detection')}
+          </p>
+          <p data-reveal className="mt-3 max-w-prose text-sm leading-relaxed text-ink-600">
+            {t(
+              'home.see.caveat',
+              'It has not been validated across every type of water structure, and image-based observations cannot establish structural stability, hidden defects or material chemistry.'
+            )}
+          </p>
+          <div data-reveal className="mt-8 flex flex-wrap gap-3">
+            <a href="/upload" onClick={go(onRouteChange, '/upload')} className="btn-primary">
+              {t('nav.startInspection', 'Start an inspection')}
+            </a>
+          </div>
         </div>
-        <nav aria-label="Footer" className="md:col-span-3 md:col-start-7">
-          <p className="eyebrow text-stone-500">Product</p>
-          <ul className="mt-4 space-y-2 text-sm">
-            {(
-              [
-                ['/upload', 'Start an inspection'],
-                ['/analysis', 'Findings'],
-                ['/knowledge', 'Knowledge base'],
-                ['/report', 'Dossier'],
-              ] as [AppRoute, string][]
-            ).map(([route, label]) => (
-              <li key={route}>
-                <a href={route} onClick={go(onRouteChange, route)} className="link-underline text-stone-200 hover:text-stone-50">
-                  {label}
-                </a>
+
+        <div className="lg:col-span-7 lg:pt-20">
+          <figure data-reveal className="border border-ink-900/10 bg-white p-5 text-ink-900 sm:p-8">
+            <WorkspaceSchematic />
+            <figcaption className="mt-4 font-mono text-[11px] tracking-wide text-ink-600">
+              SCHEMATIC · In the findings workspace, results are labelled as model output, rule-based results, or items
+              needing expert verification.
+            </figcaption>
+          </figure>
+          <ol className="mt-10 grid grid-cols-1 border-t border-ink-900/15 sm:grid-cols-5" aria-label="Inspection workflow">
+            {WORKFLOW.map((w, i) => (
+              <li
+                key={w.step}
+                data-reveal
+                style={{ '--reveal-delay': `${i * 70}ms` } as React.CSSProperties}
+                className={`grid grid-cols-[2.5rem_5.5rem_1fr] items-baseline gap-x-3 border-b border-ink-900/15 py-4 sm:block sm:border-b-0 sm:py-5 sm:pr-4 ${
+                  i ? 'sm:border-l sm:pl-4' : ''
+                }`}
+              >
+                <span className="eyebrow text-laterite-500">{String(i + 1).padStart(2, '0')}</span>
+                <span className="text-sm font-semibold text-ink-950 sm:mt-3 sm:block">{w.step}</span>
+                <span className="text-[0.8125rem] leading-relaxed text-ink-700 sm:mt-1.5 sm:block">{w.body}</span>
               </li>
             ))}
-          </ul>
-        </nav>
-        <div className="md:col-span-3">
-          <p className="eyebrow text-stone-500">Team</p>
-          <p className="mt-4 text-sm text-stone-200">NeuralX</p>
-          <p className="mt-1 text-sm text-stone-400">Vision · Engineering &amp; IKS · Backend · Frontend</p>
+          </ol>
         </div>
       </div>
-      <p className="mt-16 font-mono text-[11px] tracking-wide text-stone-500">
-        The stepwell and site in the opening sequence are an illustrative composite, modelled procedurally: one example
-        of India&rsquo;s water heritage, not a survey of a specific site.
-      </p>
-    </div>
-  </footer>
-);
+    </section>
+  );
+};
+
+/** G — Final call to action, then the footer. */
+export const ClosingSection: React.FC<{ onRouteChange: (route: AppRoute) => void }> = ({ onRouteChange }) => {
+  const { t } = useLanguage();
+  return (
+    <footer className="gutter bg-ink-950 pb-10 pt-28 text-stone-100 sm:pt-40">
+      <div className="mx-auto max-w-wide">
+        <section aria-labelledby="closing-title" className="max-w-[52rem]">
+          <p data-reveal className="font-deva text-2xl text-stone-400" lang="hi">
+            जल ही जीवन है
+          </p>
+          <h2 id="closing-title" data-reveal="mask" className="mt-6 font-display text-display-lg font-medium text-stone-50">
+            {t('home.closing.title', "Document India's water heritage.")}
+          </h2>
+          <p data-reveal className="mt-8 max-w-[38rem] text-lg leading-relaxed text-stone-300">
+            {t(
+              'home.closing.lead',
+              'Begin with what can be documented. Connect it with what is known. Build a clearer basis for considering how it should be cared for.'
+            )}
+          </p>
+          <div data-reveal className="mt-10 flex flex-wrap gap-3">
+            <a href="/upload" onClick={go(onRouteChange, '/upload')} className="btn-light">
+              {t('nav.startInspection', 'Start an inspection')}
+            </a>
+            <a href="/knowledge" onClick={go(onRouteChange, '/knowledge')} className="btn-ghost-light">
+              {t('hero.exploreKnowledge', 'Explore knowledge')}
+            </a>
+          </div>
+        </section>
+
+        <div className="mt-28 grid grid-cols-1 gap-10 border-t border-stone-50/15 pt-10 md:grid-cols-12">
+          <div className="md:col-span-5">
+            <JalDrishtiLogo tone="light" showDevanagari />
+            <p className="mt-6 max-w-[40ch] text-sm leading-relaxed text-stone-400">
+              {t(
+                'home.closing.tagline',
+                'AI-assisted digital conservation for India’s traditional water structures. JalDrishti supports — and does not replace — assessment by qualified conservation professionals.'
+              )}
+            </p>
+          </div>
+          <nav aria-label="Footer" className="md:col-span-3 md:col-start-7">
+            <p className="eyebrow text-stone-500">{t('home.closing.product', 'Product')}</p>
+            <ul className="mt-4 space-y-2 text-sm">
+              {(
+                [
+                  ['/upload', t('nav.startInspection', 'Start an inspection')],
+                  ['/analysis', t('nav.findings', 'Findings')],
+                  ['/knowledge', t('nav.knowledge', 'Knowledge base')],
+                  ['/report', t('nav.report', 'Dossier')],
+                  ['/gallery', t('nav.gallery', 'Gallery')],
+                ] as [AppRoute, string][]
+              ).map(([route, label]) => (
+                <li key={route}>
+                  <a href={route} onClick={go(onRouteChange, route)} className="link-underline text-stone-200 hover:text-stone-50">
+                    {label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          <div className="md:col-span-3">
+            <p className="eyebrow text-stone-500">{t('home.closing.team', 'Team')}</p>
+            <p className="mt-4 text-sm text-stone-200">{t('common.teamNeuralX', 'Team NeuralX')}</p>
+            <p className="mt-1 text-sm text-stone-400">{t('home.closing.teamCredits', 'Vision · Engineering & IKS · Backend · Frontend')}</p>
+          </div>
+        </div>
+        <p className="mt-16 font-mono text-[11px] tracking-wide text-stone-500">
+          {t(
+            'home.closing.disclaimer',
+            'The stepwell and site in the opening sequence are an illustrative composite, modelled procedurally: one example of India’s water heritage, not a survey of a specific site.'
+          )}
+        </p>
+      </div>
+    </footer>
+  );
+};

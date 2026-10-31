@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { JalDrishtiLogo } from './JalDrishtiLogo';
 import { Navigation } from './Navigation';
 import { Icon } from './Icon';
+import { LanguageSelector } from './LanguageSelector';
 import { AppRoute } from '../types';
 import { checkBackendHealth } from '../services/api';
+import { useLanguage } from '../i18n/LanguageContext';
 
 type BackendStatus = 'checking' | 'connected' | 'unreachable';
 
@@ -31,7 +33,12 @@ const useBackendStatus = (): { status: BackendStatus; version?: string } => {
 
 const BackendIndicator: React.FC = () => {
   const { status, version } = useBackendStatus();
-  const label = { checking: 'Checking API', connected: 'API connected', unreachable: 'API unreachable' }[status];
+  const { t } = useLanguage();
+  const label = {
+    checking: t('header.checkingApi', 'Checking API'),
+    connected: t('header.apiConnected', 'API connected'),
+    unreachable: t('header.apiUnreachable', 'API unreachable'),
+  }[status];
   const dot = { checking: 'bg-ws-faint', connected: 'bg-ws-jade-light', unreachable: 'bg-laterite-300' }[status];
   const tone = {
     checking: 'border-ws-text/15 text-ws-muted',
@@ -89,7 +96,8 @@ export const Header: React.FC<HeaderProps> = ({ currentRoute, onRouteChange, has
           <Navigation currentRoute={currentRoute} onRouteChange={onRouteChange} hasSession={hasSession} />
         </nav>
 
-        <div className="hidden lg:block">
+        <div className="hidden lg:flex items-center gap-3">
+          <LanguageSelector />
           <BackendIndicator />
         </div>
 
@@ -113,7 +121,8 @@ export const Header: React.FC<HeaderProps> = ({ currentRoute, onRouteChange, has
             hasSession={hasSession}
             orientation="vertical"
           />
-          <div className="mt-5">
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <LanguageSelector />
             <BackendIndicator />
           </div>
         </nav>

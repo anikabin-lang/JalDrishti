@@ -22,11 +22,19 @@ import {
 } from '../types';
 import { MOCK_ANALYSIS_FIXTURE } from '../mocks/fixtures';
 
-const LOCAL_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
+export const getBaseUrl = (): string => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  if (envUrl !== undefined && envUrl !== '') {
+    return envUrl.replace('://localhost:', '://127.0.0.1:');
+  }
+  // When running under Vite dev proxy or same-host deployment, use relative paths
+  if (typeof window !== 'undefined' && (window.location.port === '5173' || window.location.port === '3000')) {
+    return '';
+  }
+  return 'http://127.0.0.1:8000';
+};
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ??
-  (typeof window !== 'undefined' && !LOCAL_HOSTS.includes(window.location.hostname) ? '' : 'http://localhost:8000');
+const API_BASE_URL = getBaseUrl();
 
 /** Mirrors the backend default MAX_UPLOAD_SIZE_BYTES (10 MB). */
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -295,4 +303,146 @@ export function evaluateMaterialCompatibility(
  */
 export async function getDevelopmentMockFixture(): Promise<AnalysisResultContract> {
   return JSON.parse(JSON.stringify(MOCK_ANALYSIS_FIXTURE));
+}
+
+// ==============================================================================
+// ENTERPRISE API METHODS: STRUCTURES, BASELINE (3 PHOTOS), PASSPORTS, PDF, DOCS
+// ==============================================================================
+
+import type {
+  HeritageStructure,
+  DefectPassport,
+  BaselineInspectionResult,
+  DocumentExtractionResult,
+  ExtractedDefect,
+} from '../types';
+
+export function fetchHeritageStructures(): Promise<HeritageStructure[]> {
+  return request<HeritageStructure[]>('/structures');
+}
+
+export function createHeritageStructure(data: {
+  name: string;
+  typology?: string;
+  location?: string;
+  region?: string;
+  historical_period?: string;
+  notes?: string;
+}): Promise<HeritageStructure> {
+  return request<HeritageStructure>('/structures', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+}
+
+export function fetchHeritageStructureDetails(structureId: string): Promise<{
+  structure: HeritageStructure;
+  inspections: any[];
+  passports: DefectPassport[];
+}> {
+  return request(`/structures/${encodeURIComponent(structureId)}`);
+}
+
+/**
+ * Execute baseline inspection.
+ * Requires mandatory minimum of 3 photographs.
+ */
+export function submitBaselineInspection(
+  structureId: string,
+  files: File[],
+): Promise<BaselineInspectionResult> {
+  const formData = new FormData();
+  files.forEach((file) => formData.append('files', file));
+
+  return request<BaselineInspectionResult>(
+    `/structures/${encodeURIComponent(structureId)}/inspections/baseline`,
+    {
+      method: 'POST',
+      body: formData,
+    },
+    180000,
+  );
+}
+
+/**
+ * Execute repeat inspection to match defects against existing passports.
+ */
+export function submitRepeatInspection(
+  structureId: string,
+  files: File[],
+): Promise<any> {
+  const formData = new FormData();
+  files.forEach((file) => formData.append('files', file));
+
+  return request(
+    `/structures/${encodeURIComponent(structureId)}/inspections/repeat`,
+    {
+      method: 'POST',
+      body: formData,
+    },
+    180000,
+  );
+}
+
+/**
+ * Download multilingual PDF report.
+ */
+export async function downloadInspectionPdf(
+  inspectionId: string,
+  lang: string = 'en',
+): Promise<void> {
+  const base = getBaseUrl();
+  const url = `${base}/inspections/${encodeURIComponent(inspectionId)}/pdf?lang=${encodeURIComponent(lang)}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new ApiError('Failed to generate PDF report from backend.', response.status);
+  }
+  const blob = await response.blob();
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = downloadUrl;
+  a.download = `jaldrishti_inspection_${inspectionId}_${lang}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(downloadUrl);
+  document.body.removeChild(a);
+}
+
+/**
+ * Upload and extract findings from a historical survey PDF.
+ */
+export function uploadHistoricalSurveyPdf(
+  structureId: string,
+  file: File,
+): Promise<DocumentExtractionResult> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return request<DocumentExtractionResult>(
+    `/structures/${encodeURIComponent(structureId)}/documents/upload`,
+    {
+      method: 'POST',
+      body: formData,
+    },
+    120000,
+  );
+}
+
+/**
+ * Confirm and import historical findings into permanent Defect Passports.
+ */
+export function importHistoricalDefects(
+  structureId: string,
+  documentId: string,
+  defects: ExtractedDefect[],
+): Promise<{ status: string; imported_count: number; passports: string[] }> {
+  return request(
+    `/structures/${encodeURIComponent(structureId)}/documents/${encodeURIComponent(documentId)}/import-defects`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(defects),
+    },
+  );
 }

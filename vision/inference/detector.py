@@ -123,7 +123,7 @@ class DetectionPredictor:
                                label_status=self.meta["label_status"], preprocessing_version=DETECTOR_PREPROCESSING,
                                score_threshold=float(self.meta["score_threshold"]), warnings=warnings)
 
-    def predict(self, source: ImageSource) -> DetectionResult:
+    def predict(self, source: ImageSource, score_threshold: Optional[float] = None) -> DetectionResult:
         import torch
         from torchvision.transforms.functional import pil_to_tensor
 
@@ -148,7 +148,7 @@ class DetectionPredictor:
             res.error = {"code": "inference_failed", "message": f"{type(exc).__name__} during forward pass"}
             return res
         t2 = time.perf_counter()
-        th = float(self.meta["score_threshold"])
+        th = float(score_threshold if score_threshold is not None else self.meta["score_threshold"])
         classes = self.meta["classes"]
         boxes, scores, labels = out["boxes"].cpu().tolist(), out["scores"].cpu().tolist(), out["labels"].cpu().tolist()
         dets = []

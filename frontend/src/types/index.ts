@@ -56,6 +56,12 @@ export interface VisionResultContract {
     inference_latency_ms?: number;
     model_version?: string;
   };
+  relevance_status?: 'relevant' | 'uncertain' | 'irrelevant';
+  relevance_confidence?: number;
+  quality_status?: 'good' | 'blurred' | 'poor_lighting';
+  rejection_reason?: string | null;
+  needs_manual_review?: boolean;
+  status_message?: string;
 }
 
 export interface MetricScore {
@@ -225,6 +231,11 @@ export interface ImageUploadResult {
   created_at: string;
   structure_type?: string | null;
   original_filename?: string | null;
+  inspection_status?: 'accepted' | 'rejected' | 'uncertain' | 'uploaded' | string;
+  relevance_confidence?: number | null;
+  rejection_reason?: string | null;
+  needs_manual_review?: boolean;
+  model_version?: string | null;
 }
 
 export interface HeritageImageSummary {
@@ -244,6 +255,11 @@ export interface HeritageImageSummary {
   preview_url: string;
   thumbnail_url: string;
   original_url: string;
+  inspection_status?: string | null;
+  relevance_confidence?: number | null;
+  rejection_reason?: string | null;
+  needs_manual_review?: boolean;
+  model_version?: string | null;
 }
 
 export interface PaginatedImagesResponse {
@@ -381,4 +397,109 @@ export interface KnowledgeSource {
   topic?: string;
   claim_supported?: string;
   claims_supported?: string[];
+}
+
+// ==============================================================================
+// ENTERPRISE EXTENSIONS: HERITAGE STRUCTURES, BASELINE & DEFECT PASSPORTS
+// ==============================================================================
+
+export interface HeritageStructure {
+  structure_id: string;
+  name: string;
+  typology: string;
+  location: string;
+  region: string;
+  historical_period: string;
+  notes: string;
+  baseline_completed: boolean;
+  baseline_inspection_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  total_defects?: number;
+  active_defects?: number;
+  total_inspections?: number;
+}
+
+export interface DefectPassport {
+  defect_id: string;
+  structure_id: string;
+  defect_category: 'crack' | 'vegetation' | string;
+  first_detected_date: string;
+  original_inspection_id: string;
+  original_image_id: string;
+  bounding_box: [number, number, number, number];
+  confidence: number;
+  severity: 'low' | 'moderate' | 'severe' | string;
+  status: 'active' | 'monitoring' | 'repaired' | 'critical' | string;
+  verification_status: 'ai_detected' | 'human_verified' | 'rejected' | string;
+  repair_notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DefectObservation {
+  observation_id: string;
+  defect_id: string;
+  inspection_id: string;
+  image_id: string;
+  bounding_box: [number, number, number, number];
+  confidence: number;
+  observed_status: string;
+  notes?: string | null;
+  created_at: string;
+}
+
+export interface InspectionImageRecord {
+  image_id: string;
+  inspection_id: string;
+  structure_id: string;
+  original_filename: string;
+  preview_url?: string;
+  quality_status: string;
+  relevance_status: string;
+  relevance_confidence: number;
+  inspection_status: string;
+  rejection_reason?: string | null;
+  results_json?: Record<string, any>;
+  image_order: number;
+}
+
+export interface BaselineInspectionResult {
+  inspection_id: string;
+  structure_id: string;
+  status: 'completed' | 'incomplete';
+  baseline_completed: boolean;
+  summary: {
+    status: string;
+    total_images: number;
+    valid_images: number;
+    rejected_images: number;
+    total_cracks: number;
+    vegetation_count: number;
+    message: string;
+  };
+  images: InspectionImageRecord[];
+  defects_registered: number;
+  passports?: string[] | DefectPassport[];
+}
+
+export interface ExtractedDefect {
+  description: string;
+  category: string;
+  severity: string;
+  page_number: number;
+  confirmed?: boolean;
+}
+
+export interface DocumentExtractionResult {
+  document_id: string;
+  structure_id: string;
+  filename: string;
+  status: string;
+  total_pages: number;
+  extracted_structure_name?: string | null;
+  extracted_inspection_date?: string | null;
+  extracted_defects: ExtractedDefect[];
+  extracted_recommendations: string[];
+  extracted_photos_count: number;
 }

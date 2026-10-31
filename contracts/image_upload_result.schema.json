@@ -67,6 +67,26 @@
     "created_at": {
       "type": "string",
       "description": "ISO 8601 creation timestamp."
+    },
+    "inspection_status": {
+      "type": ["string", "null"],
+      "description": "Inspection gate status: 'accepted', 'rejected', 'uncertain', or 'uploaded'."
+    },
+    "relevance_confidence": {
+      "type": ["number", "null"],
+      "description": "Confidence score from the heritage relevance classifier."
+    },
+    "rejection_reason": {
+      "type": ["string", "null"],
+      "description": "Detailed explanation when image is rejected or uncertain."
+    },
+    "needs_manual_review": {
+      "type": ["boolean", "null"],
+      "description": "Whether manual review is requested."
+    },
+    "model_version": {
+      "type": ["string", "null"],
+      "description": "Identifier of the model that inspected the image."
     }
   },
   "additionalProperties": false

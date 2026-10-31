@@ -36,9 +36,15 @@ frontend/.vercel/
 *.bin
 runs/
 wandb/
+vision/models/**/*.jpg
+vision/models/**/*.png
 !vision/models/crack_pilot_yolov8n.pt
 # Crack detection pilot v1 (trained 2026-10-19; see vision/docs/MODEL_CARD_crack_detector.md)
 !vision/models/crack_detector_pilot_v1/model.pt
+# Upgraded models: relevance classifier & YOLO26n multi-class detector
+!vision/models/relevance_classifier/model.pt
+!vision/models/damage_detector_yolo26n/model.pt
+!vision/models/damage_detector_yolo26n_unified/model.pt
 
 # Datasets and Large Folders
 data/raw/*
@@ -48,6 +54,11 @@ vision/datasets/*
 vision/model/*
 vision/outputs/*
 Darbhanga_Fort/
+Crack Data-Darbhanga Fort/
+Historic_Place_Dataset/
+Historical Building Cracks/
+YTU-CrackIS/
+backups/
 # Supplied dataset archive (extract to data/raw/darbhanga_crack/; licence not yet recorded)
 /DrabhangaDataset.zip
 

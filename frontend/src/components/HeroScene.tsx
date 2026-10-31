@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { JalDrishtiLogo } from './JalDrishtiLogo';
+import { LanguageSelector } from './LanguageSelector';
 import { useReducedMotion } from '../hooks/useReducedMotion';
+import { useLanguage } from '../i18n/LanguageContext';
 import type { AppRoute } from '../types';
 import type { DescentScene } from '../scene/DescentScene';
 
@@ -127,6 +129,7 @@ const SCRIM: Record<Align, string> = {
 };
 
 export const HeroScene: React.FC<HeroSceneProps> = ({ onRouteChange, nextSectionId }) => {
+  const { t } = useLanguage();
   const reducedMotion = useReducedMotion();
   const sectionRef = useRef<HTMLElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -416,24 +419,25 @@ export const HeroScene: React.FC<HeroSceneProps> = ({ onRouteChange, nextSection
           >
             <JalDrishtiLogo tone="light" />
           </a>
-          <nav aria-label="Primary" className="flex items-center gap-1 sm:gap-2">
+          <nav aria-label="Primary" className="flex items-center gap-2 sm:gap-3">
+            <LanguageSelector />
             <button
               type="button"
               onClick={skip}
               className="link-underline inline-flex h-9 items-center px-2 text-xs font-medium tracking-wide text-stone-100 hover:text-stone-50 sm:px-3"
             >
-              Skip<span className="hidden sm:inline">&nbsp;the descent</span>
+              {t('hero.skipDescent', 'Skip the descent')}
             </button>
             <a
               href="/knowledge"
               onClick={go('/knowledge')}
               className="link-underline hidden h-9 items-center px-3 text-xs font-medium tracking-wide text-stone-100 hover:text-stone-50 sm:inline-flex"
             >
-              Knowledge
+              {t('nav.knowledge', 'Knowledge')}
             </a>
             <a href="/upload" onClick={go('/upload')} className="btn-light h-9 px-3 text-xs sm:px-4">
-              <span className="sm:hidden">Inspect</span>
-              <span className="hidden sm:inline">Start an inspection</span>
+              <span className="sm:hidden">{t('nav.inspectShort', 'Inspect')}</span>
+              <span className="hidden sm:inline">{t('nav.startInspection', 'Start an inspection')}</span>
             </a>
           </nav>
         </header>
@@ -454,27 +458,28 @@ export const HeroScene: React.FC<HeroSceneProps> = ({ onRouteChange, nextSection
                   जलदृष्टि
                 </span>
                 <span className="mx-3 opacity-60">/</span>
-                India&rsquo;s water heritage
+                {t('hero.waterHeritage', "India’s water heritage")}
               </p>
               <h1 className="text-stone-50">
                 <span className="block font-display text-[clamp(2.9rem,8.8vw,8.5rem)] font-medium uppercase leading-[0.88] tracking-[0.01em] [text-shadow:0_2px_36px_rgba(18,14,10,0.5)]">
                   JalDrishti
                 </span>
                 <span className="mt-5 block max-w-[24ch] font-display text-[clamp(1.6rem,2.7vw,2.6rem)] font-medium italic leading-[1.08] [text-shadow:0_2px_24px_rgba(18,14,10,0.55)]">
-                  A deeper understanding of India&rsquo;s water heritage.
+                  {t('hero.tagline', 'A deeper understanding of India&rsquo;s water heritage.')}
                 </span>
               </h1>
               <p className="mt-6 max-w-[34rem] text-[0.975rem] leading-relaxed text-stone-100 [text-shadow:0_1px_16px_rgba(18,14,10,0.6)] sm:text-[1.0625rem]">
-                From stepwells and kunds to historic tanks and other traditional water systems, India&rsquo;s water
-                heritage carries architectural, environmental, and cultural knowledge. JalDrishti brings digital tools
-                and traditional knowledge together to support its documentation and conservation.
+                {t(
+                  'hero.lead',
+                  'From stepwells and kunds to historic tanks and other traditional water systems, India’s water heritage carries architectural, environmental, and cultural knowledge. JalDrishti brings digital tools and traditional knowledge together to support its documentation and conservation.'
+                )}
               </p>
               <div className="pointer-events-auto mt-8 flex flex-wrap gap-3">
                 <button type="button" onClick={explore} className="btn-light">
-                  Explore JalDrishti
+                  {t('hero.explore', 'Explore JalDrishti')}
                 </button>
                 <a href="/upload" onClick={go('/upload')} className="btn-ghost-light backdrop-blur-[2px]">
-                  Start an inspection
+                  {t('nav.startInspection', 'Start an inspection')}
                 </a>
               </div>
             </div>
@@ -484,12 +489,12 @@ export const HeroScene: React.FC<HeroSceneProps> = ({ onRouteChange, nextSection
         {/* Screen-reader version of the narrative; the visual layers below are decorative. */}
         {mode === 'immersive' && (
           <ol className="sr-only">
-            {CHAPTERS.map((c) => (
+            {CHAPTERS.map((c, i) => (
               <li key={c.id}>
                 <h2>
-                  {c.label}: {c.title}
+                  {t(`hero.chapter${i + 1}.label`, c.label)}: {t(`hero.chapter${i + 1}.title`, c.title)}
                 </h2>
-                <p>{c.body}</p>
+                <p>{t(`hero.chapter${i + 1}.body`, c.body)}</p>
               </li>
             ))}
           </ol>
@@ -520,24 +525,26 @@ export const HeroScene: React.FC<HeroSceneProps> = ({ onRouteChange, nextSection
                 }`}
               >
                 <div className={c.align === 'centre' ? '' : 'max-w-[36rem]'}>
-                  <p className="eyebrow text-jade-100 [text-shadow:0_1px_12px_rgba(18,14,10,0.6)]">{c.label}</p>
+                  <p className="eyebrow text-jade-100 [text-shadow:0_1px_12px_rgba(18,14,10,0.6)]">
+                    {t(`hero.chapter${i + 1}.label`, c.label)}
+                  </p>
                   <p className="mt-4 font-display text-display-md font-medium text-stone-50 [text-shadow:0_2px_28px_rgba(18,14,10,0.55)]">
-                    {c.title}
+                    {t(`hero.chapter${i + 1}.title`, c.title)}
                   </p>
                   <p
                     className={`mt-5 text-base leading-relaxed text-stone-100 [text-shadow:0_1px_14px_rgba(18,14,10,0.7)] sm:text-[1.0625rem] ${
                       c.align === 'centre' ? 'mx-auto max-w-[36rem]' : ''
                     }`}
                   >
-                    {c.body}
+                    {t(`hero.chapter${i + 1}.body`, c.body)}
                   </p>
                   {c.final && (
                     <div className="pointer-events-auto mt-9 flex flex-wrap justify-center gap-3">
                       <a href="/upload" onClick={go('/upload')} className="btn-light" tabIndex={-1}>
-                        Begin an inspection
+                        {t('hero.beginInspection', 'Begin an inspection')}
                       </a>
                       <a href="/knowledge" onClick={go('/knowledge')} className="btn-ghost-light" tabIndex={-1}>
-                        Explore knowledge
+                        {t('hero.exploreKnowledge', 'Explore knowledge')}
                       </a>
                     </div>
                   )}
@@ -554,7 +561,7 @@ export const HeroScene: React.FC<HeroSceneProps> = ({ onRouteChange, nextSection
             aria-hidden="true"
             className="pointer-events-none absolute bottom-7 left-1/2 z-content hidden -translate-x-1/2 flex-col items-center gap-3 text-stone-100 sm:flex"
           >
-            <span className="eyebrow [text-shadow:0_1px_10px_rgba(18,14,10,0.6)]">Scroll to descend</span>
+            <span className="eyebrow [text-shadow:0_1px_10px_rgba(18,14,10,0.6)]">{t('hero.scrollDescend', 'Scroll to descend')}</span>
             <span className="relative block h-10 w-px overflow-hidden bg-stone-50/25">
               <span className="animate-scroll-cue absolute inset-0 bg-stone-50" />
             </span>

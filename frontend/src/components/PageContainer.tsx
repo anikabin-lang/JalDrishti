@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { ButtonSurfaceContext } from './Button';
 import { usePlateMotion } from '../hooks/usePlateMotion';
+import { useLanguage } from '../i18n/LanguageContext';
 
 /**
  * Reference photographs supplied for the internal pages (public/plates/, byte-for-byte
@@ -29,12 +30,15 @@ export type PlateName = keyof typeof PLATES;
  */
 export type PlateTreatment = 'panel' | 'arch';
 
-const Caption: React.FC<{ text: string; dark: boolean; className?: string }> = ({ text, dark, className = '' }) => (
-  <figcaption className={`flex items-center gap-3 text-[0.8125rem] ${dark ? 'text-ws-faint' : 'text-ink-500'} ${className}`}>
-    <span aria-hidden="true" className="h-px w-6 bg-current opacity-60" />
-    {text} · reference photograph
-  </figcaption>
-);
+const Caption: React.FC<{ text: string; dark: boolean; className?: string }> = ({ text, dark, className = '' }) => {
+  const { t } = useLanguage();
+  return (
+    <figcaption className={`flex items-center gap-3 text-[0.8125rem] ${dark ? 'text-ws-faint' : 'text-ink-500'} ${className}`}>
+      <span aria-hidden="true" className="h-px w-6 bg-current opacity-60" />
+      {text} · {t('plates.referencePhotograph', 'reference photograph')}
+    </figcaption>
+  );
+};
 
 /** Pointed-arch outline, drawn over the masked photograph (same geometry as .ws-arch's mask). */
 const ArchOutline: React.FC = () => (
@@ -51,8 +55,10 @@ export const Plate: React.FC<{ name: PlateName; treatment: PlateTreatment; dark:
 }) => {
   const frameRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const { t } = useLanguage();
   usePlateMotion(frameRef, imageRef, { tilt: treatment === 'arch', scale: treatment === 'panel' ? 1.06 : 1.12 });
   const plate = PLATES[name];
+  const plateCaption = t(`plates.caption.${name}`, plate.caption);
   const img = (
     <img
       ref={imageRef}
@@ -70,7 +76,7 @@ export const Plate: React.FC<{ name: PlateName; treatment: PlateTreatment; dark:
         <div ref={frameRef} className="ws-panel ws-unveil" style={{ aspectRatio: `${plate.w} / ${plate.h}` }}>
           {img}
         </div>
-        <Caption text={plate.caption} dark={dark} className="mt-4 justify-end px-[var(--gutter)] lg:pl-0" />
+        <Caption text={plateCaption} dark={dark} className="mt-4 justify-end px-[var(--gutter)] lg:pl-0" />
       </figure>
     );
   }
@@ -80,7 +86,7 @@ export const Plate: React.FC<{ name: PlateName; treatment: PlateTreatment; dark:
         {img}
         <ArchOutline />
       </div>
-      <Caption text={plate.caption} dark={dark} className="mt-4 justify-center" />
+      <Caption text={plateCaption} dark={dark} className="mt-4 justify-center" />
     </figure>
   );
 };

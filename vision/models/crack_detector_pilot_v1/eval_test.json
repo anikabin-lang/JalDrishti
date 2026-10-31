@@ -30,23 +30,23 @@
     "with_ground_truth_boxes": 197,
     "average_precision": 1.0,
     "roc_auc": 1.0,
-    "threshold": 0.052042894065380096,
+    "threshold": 0.7,
     "confusion_matrix": {
-      "tp": 197,
-      "fp": 1,
-      "fn": 0,
-      "tn": 28
+      "tp": 193,
+      "fp": 0,
+      "fn": 4,
+      "tn": 29
     },
-    "precision": 0.9949494949494949,
-    "recall": 1.0,
-    "specificity": 0.9655172413793104
+    "precision": 1.0,
+    "recall": 0.9796954314720813,
+    "specificity": 1.0
   },
   "split": "test",
   "checkpoint": "model.pt",
   "model_version": "pilot_v1",
   "label_status": "verified",
   "score_threshold": 0.7,
-  "image_threshold": 0.052042894065380096,
+  "image_threshold": 0.7,
   "error_analysis_counts": {
     "images_all_gt_matched": 158,
     "images_with_missed_gt": 39,

@@ -140,6 +140,32 @@
           "type": "string"
         }
       }
+    },
+    "relevance_status": {
+      "type": "string",
+      "enum": ["relevant", "uncertain", "irrelevant"],
+      "description": "Image relevance screening status"
+    },
+    "relevance_confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "quality_status": {
+      "type": "string",
+      "enum": ["good", "blurred", "poor_lighting"]
+    },
+    "rejection_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "needs_manual_review": {
+      "type": "boolean"
+    },
+    "status_message": {
+      "type": "string"
     }
   }
 }

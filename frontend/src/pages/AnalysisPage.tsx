@@ -14,9 +14,12 @@ import { MaterialDnaCard } from '../components/MaterialDnaCard';
 import { WhyThisRecommendation } from '../components/WhyThisRecommendation';
 import { RestorationRoadmap } from '../components/RestorationRoadmap';
 import { ProvenanceBanner } from '../components/ProvenanceBanner';
+import { PipelineTriageAlert } from '../components/PipelineTriageAlert';
 import { OriginTag } from '../components/StatusBadge';
 import { AppRoute, InspectionSession } from '../types';
 import { humanize, listEngineeringMetrics, readRootCauses, resolveImageSource, visionOrigin } from '../utils/analysis';
+import { downloadInspectionPdf } from '../services/api';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export interface AnalysisPageProps {
   session: InspectionSession | null;
@@ -30,6 +33,7 @@ const scrollToSection = (id: string) => {
 };
 
 export const AnalysisPage: React.FC<AnalysisPageProps> = ({ session, onRouteChange, onLoadFixture }) => {
+  const { language, t } = useLanguage();
   const detections = session?.result.vision.detections ?? [];
   const classKey = detections.map((d) => d.class_name).join('|');
   const [visibleClasses, setVisibleClasses] = useState<Set<string>>(() => new Set(detections.map((d) => d.class_name)));
@@ -47,31 +51,33 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({ session, onRouteChan
   if (!session) {
     return (
       <PageContainer
-        eyebrow="JalDrishti / Findings"
-        title="Findings"
-        subtitle="Detections, engineering scores and conservation considerations for one inspection."
+        eyebrow={t('analysis.eyebrow', 'JalDrishti / Findings')}
+        title={t('analysis.title', 'Findings')}
+        subtitle={t('analysis.subtitle', 'Detections, engineering scores and conservation considerations for one inspection.')}
         plate="well-octagon"
         treatment="panel"
         ground="dark"
       >
         <EmptyState
-          title="No inspection loaded"
+          title={t('analysis.noInspectionTitle', 'No inspection loaded')}
           description={
             <>
-              <p>Run a photograph through the pipeline to see its findings here.</p>
+              <p>{t('analysis.noInspectionDesc', 'Run a photograph through the pipeline to see its findings here.')}</p>
               <p className="mt-2">
-                To review the interface without the backend, you can open the development sample. It is a fixed fixture,
-                clearly labelled, and is not the result of any analysis.
+                {t(
+                  'analysis.devSampleDesc',
+                  'To review the interface without the backend, you can open the development sample. It is a fixed fixture, clearly labelled, and is not the result of any analysis.'
+                )}
               </p>
             </>
           }
           actions={
             <>
               <Button onClick={() => onRouteChange('/upload')} icon={<Icon name="upload" className="h-4 w-4" />}>
-                Start an inspection
+                {t('analysis.startInspection', 'Start an inspection')}
               </Button>
               <Button variant="secondary" onClick={onLoadFixture}>
-                View development sample
+                {t('analysis.viewDevSample', 'View development sample')}
               </Button>
             </>
           }
@@ -82,7 +88,7 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({ session, onRouteChan
 
   const { result } = session;
   const imageSrc = resolveImageSource(session);
-  const title = result.structure.name || `Unnamed ${humanize(result.structure.type).toLowerCase()}`;
+  const title = result.structure.name || `${t('analysis.unnamed', 'Unnamed')} ${t('typology.' + result.structure.type, humanize(result.structure.type))}`;
 
   const toggleClass = (name: string) =>
     setVisibleClasses((prev) => {
@@ -94,11 +100,11 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({ session, onRouteChan
 
   return (
     <PageContainer
-      eyebrow="JalDrishti / Findings"
+      eyebrow={t('analysis.eyebrow', 'JalDrishti / Findings')}
       title={title}
       subtitle={
         <>
-          {humanize(result.structure.type)}
+          {t('typology.' + result.structure.type, humanize(result.structure.type))}
           {result.structure.region ? ` · ${result.structure.region}` : ''}
         </>
       }
@@ -108,10 +114,17 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({ session, onRouteChan
       actions={
         <>
           <Button variant="secondary" onClick={() => onRouteChange('/upload')}>
-            New inspection
+            {t('analysis.newInspection', 'New inspection')}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => downloadInspectionPdf(session.image?.inspection_id || 'latest', language)}
+            icon={<Icon name="download" className="h-4 w-4" />}
+          >
+            PDF Report ({language.toUpperCase()})
           </Button>
           <Button onClick={() => onRouteChange('/report')} icon={<Icon name="arrowRight" className="h-4 w-4" />} className="flex-row-reverse">
-            Open report
+            {t('analysis.openReport', 'Open report')}
           </Button>
         </>
       }
@@ -121,7 +134,7 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({ session, onRouteChan
         result={result}
         onJump={scrollToSection}
         isFixture={session.provenance === 'fixture'}
-        seeOrigin={visionOrigin(session) === 'unverified' ? 'unverified' : 'model'}
+        seeOrigin={visionOrigin(session)}
         className="mb-14"
       />
 
@@ -129,46 +142,75 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({ session, onRouteChan
         <Section
           id="findings"
           index="01"
-          title="Visual findings"
-          description="Regions identified in the photograph."
+          title={t('analysis.visualFindings', 'Visual findings')}
+          description={
+            result.vision.relevance_status === 'irrelevant'
+              ? t('analysis.gateRejected', 'Inspection gate rejected this image as non-heritage subject matter.')
+              : t('analysis.regionsIdentified', 'Regions identified in the photograph.')
+          }
           aside={<OriginTag kind={visionOrigin(session)} />}
         >
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,44rem)_minmax(0,1fr)] lg:items-start">
-            <InspectionCanvas
-              imageSrc={imageSrc}
-              imageDimensions={result.vision.image_dimensions}
-              detections={detections}
-              visibleClasses={visibleClasses}
-              highlighted={highlighted}
-              onHighlight={setHighlighted}
-            />
-            <div className="space-y-4 text-sm leading-relaxed text-ink-700">
-              <DefectLegend detections={detections} visibleClasses={visibleClasses} onToggleClass={toggleClass} />
-              <p>
-                {detections.length === 0
-                  ? 'No regions were returned for this photograph.'
-                  : `${detections.length} region${detections.length === 1 ? '' : 's'} returned. Use the toggles to isolate a class; hover a box or a table row to link them.`}
+          <PipelineTriageAlert vision={result.vision} className="mb-6" />
+          {result.vision.relevance_status === 'irrelevant' ? (
+            <div className="rounded-sm border border-dashed border-ink-300 p-8 text-center text-sm text-ink-600">
+              <p className="font-semibold text-ink-800">{t('analysis.damageSuspended', 'Damage analysis suspended')}</p>
+              <p className="mt-1 text-xs">
+                {t(
+                  'analysis.damageSuspendedDesc',
+                  'Computer vision defect detection was withheld to prevent generating false damage records on non-heritage imagery.'
+                )}
               </p>
-              <p className="text-xs text-ink-500">
-                Detection confidence is the model’s certainty that a region belongs to a class. It says nothing about how
-                serious the defect is.
-              </p>
+              <div className="mt-4">
+                <Button variant="secondary" onClick={() => onRouteChange('/upload')}>
+                  {t('analysis.uploadHeritageImg', 'Upload a heritage structure image')}
+                </Button>
+              </div>
             </div>
-          </div>
-          <VisualMetricsPanel
-            className="mt-8"
-            detections={detections}
-            scaleReference={result.vision.scale_reference}
-            highlighted={highlighted}
-            onHighlight={setHighlighted}
-          />
+          ) : (
+            <>
+              <div className="grid gap-6 lg:grid-cols-[minmax(0,44rem)_minmax(0,1fr)] lg:items-start">
+                <InspectionCanvas
+                  imageSrc={imageSrc}
+                  imageDimensions={result.vision.image_dimensions}
+                  detections={detections}
+                  visibleClasses={visibleClasses}
+                  highlighted={highlighted}
+                  onHighlight={setHighlighted}
+                />
+                <div className="space-y-4 text-sm leading-relaxed text-ink-700">
+                  <DefectLegend detections={detections} visibleClasses={visibleClasses} onToggleClass={toggleClass} />
+                  <p>
+                    {detections.length === 0
+                      ? t('analysis.noRegions', 'No structural defect regions were returned for this photograph.')
+                      : `${detections.length} ${t('analysis.regionsReturned', 'regions returned. Use the toggles to isolate a class; hover a box or a table row to link them.')}`}
+                  </p>
+                  <p className="text-xs text-ink-500">
+                    {t(
+                      'analysis.confidenceNote',
+                      'Detection confidence is the model’s certainty that a region belongs to a class. It says nothing about how serious the defect is.'
+                    )}
+                  </p>
+                </div>
+              </div>
+              <VisualMetricsPanel
+                className="mt-8"
+                detections={detections}
+                scaleReference={result.vision.scale_reference}
+                highlighted={highlighted}
+                onHighlight={setHighlighted}
+              />
+            </>
+          )}
         </Section>
 
         <Section
           id="causes"
           index="02"
-          title="Probable causes"
-          description="Inferred by deterministic rules from the findings above. Hypotheses to check on site, not diagnoses."
+          title={t('analysis.probableCauses', 'Probable causes')}
+          description={t(
+            'analysis.probableCausesDesc',
+            'Inferred by deterministic rules from the findings above. Hypotheses to check on site, not diagnoses.'
+          )}
           aside={<OriginTag kind={session.provenance === 'fixture' ? 'fixture' : 'rules'} />}
         >
           <RootCauseAnalysisCard causes={causes} />
@@ -177,12 +219,15 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({ session, onRouteChan
         <Section
           id="assessment"
           index="03"
-          title="Engineering assessment"
-          description="Scores calculated by rule from image-space evidence. They describe what is visible, not structural safety."
+          title={t('analysis.engineeringAssessment', 'Engineering assessment')}
+          description={t(
+            'analysis.engineeringAssessmentDesc',
+            'Scores calculated by rule from image-space evidence. They describe what is visible, not structural safety.'
+          )}
           aside={<OriginTag kind={session.provenance === 'fixture' ? 'fixture' : 'rules'} />}
         >
           {metrics.length === 0 ? (
-            <p className="text-sm text-ink-600">The response contained no engineering scores.</p>
+            <p className="text-sm text-ink-600">{t('analysis.noEngineeringScores', 'The response contained no engineering scores.')}</p>
           ) : (
             <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
               {metrics.map((m) => (
@@ -195,8 +240,11 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({ session, onRouteChan
         <Section
           id="materials"
           index="04"
-          title="Material compatibility"
-          description="How candidate repair materials compare with the assumed original, across seven dimensions scored 0–10."
+          title={t('analysis.materialCompatibility', 'Material compatibility')}
+          description={t(
+            'analysis.materialCompatibilityDesc',
+            'How candidate repair materials compare with the assumed original, across seven dimensions scored 0–10.'
+          )}
           aside={
             <>
               <OriginTag kind={session.provenance === 'fixture' ? 'fixture' : 'rules'} />
@@ -217,8 +265,11 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({ session, onRouteChan
         <Section
           id="restoration"
           index="05"
-          title="Conservation considerations"
-          description="A phased starting point for planning. Every action requires review by a qualified conservation engineer before work begins."
+          title={t('analysis.restorationRoadmap', 'Conservation considerations')}
+          description={t(
+            'analysis.restorationRoadmapDesc',
+            'A phased starting point for planning. Every action requires review by a qualified conservation engineer before work begins.'
+          )}
           aside={
             <>
               <OriginTag kind={session.provenance === 'fixture' ? 'fixture' : 'rules'} />

@@ -61,7 +61,12 @@ class ImageRepository:
                         original_filename TEXT,
                         preview_url TEXT NOT NULL,
                         thumbnail_url TEXT,
-                        secure_url TEXT NOT NULL
+                        secure_url TEXT NOT NULL,
+                        inspection_status TEXT DEFAULT 'uploaded',
+                        relevance_confidence REAL,
+                        rejection_reason TEXT,
+                        needs_manual_review INTEGER DEFAULT 0,
+                        model_version TEXT
                     );
                     """
                 )
@@ -72,6 +77,16 @@ class ImageRepository:
                     conn.execute("ALTER TABLE image_metadata ADD COLUMN site_id TEXT;")
                 if "thumbnail_url" not in columns:
                     conn.execute("ALTER TABLE image_metadata ADD COLUMN thumbnail_url TEXT;")
+                if "inspection_status" not in columns:
+                    conn.execute("ALTER TABLE image_metadata ADD COLUMN inspection_status TEXT DEFAULT 'uploaded';")
+                if "relevance_confidence" not in columns:
+                    conn.execute("ALTER TABLE image_metadata ADD COLUMN relevance_confidence REAL;")
+                if "rejection_reason" not in columns:
+                    conn.execute("ALTER TABLE image_metadata ADD COLUMN rejection_reason TEXT;")
+                if "needs_manual_review" not in columns:
+                    conn.execute("ALTER TABLE image_metadata ADD COLUMN needs_manual_review INTEGER DEFAULT 0;")
+                if "model_version" not in columns:
+                    conn.execute("ALTER TABLE image_metadata ADD COLUMN model_version TEXT;")
 
                 conn.execute(
                     """
@@ -112,11 +127,13 @@ class ImageRepository:
         INSERT INTO image_metadata (
             image_id, inspection_id, site_id, public_id, asset_id, resource_type,
             format, width, height, bytes, created_at, status,
-            structure_type, original_filename, preview_url, thumbnail_url, secure_url
+            structure_type, original_filename, preview_url, thumbnail_url, secure_url,
+            inspection_status, relevance_confidence, rejection_reason, needs_manual_review, model_version
         ) VALUES (
             :image_id, :inspection_id, :site_id, :public_id, :asset_id, :resource_type,
             :format, :width, :height, :bytes, :created_at, :status,
-            :structure_type, :original_filename, :preview_url, :thumbnail_url, :secure_url
+            :structure_type, :original_filename, :preview_url, :thumbnail_url, :secure_url,
+            :inspection_status, :relevance_confidence, :rejection_reason, :needs_manual_review, :model_version
         )
         ON CONFLICT(image_id) DO UPDATE SET
             inspection_id = excluded.inspection_id,
@@ -134,16 +151,13 @@ class ImageRepository:
             original_filename = excluded.original_filename,
             preview_url = excluded.preview_url,
             thumbnail_url = excluded.thumbnail_url,
-            secure_url = excluded.secure_url;
+            secure_url = excluded.secure_url,
+            inspection_status = excluded.inspection_status,
+            relevance_confidence = excluded.relevance_confidence,
+            rejection_reason = excluded.rejection_reason,
+            needs_manual_review = excluded.needs_manual_review,
+            model_version = excluded.model_version;
         """
-        try:
-            with self._get_connection() as conn:
-                conn.execute(sql, metadata.model_dump())
-                conn.commit()
-            return metadata
-        except sqlite3.Error as e:
-            logger.error("Failed to persist image metadata for image_id %s: %s", metadata.image_id, e)
-            raise MetadataPersistenceError(f"Metadata persistence failed: {e}") from e
         try:
             with self._get_connection() as conn:
                 conn.execute(sql, metadata.model_dump())

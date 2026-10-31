@@ -2,6 +2,7 @@ import React from 'react';
 import { CandidateIntervention, CompatibilityDimensions, RecommendationLevel } from '../types';
 import { StatusBadge, BadgeVariant } from './StatusBadge';
 import { humanize } from '../utils/analysis';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const DIMENSIONS: { key: keyof CompatibilityDimensions; label: string; meaning: string }[] = [
   { key: 'mechanical', label: 'Mechanical', meaning: 'Strength and stiffness relative to the original' },
@@ -27,7 +28,9 @@ export interface MaterialDnaCardProps {
 
 /** One candidate intervention: overall rule-based score, the seven dimensions, and warnings. */
 export const MaterialDnaCard: React.FC<MaterialDnaCardProps> = ({ candidate, className = '' }) => {
+  const { t } = useLanguage();
   const rec = RECOMMENDATION[candidate.recommendation] ?? { label: humanize(candidate.recommendation), variant: 'neutral' as const };
+  const recLabel = t('material.' + candidate.recommendation, rec.label);
   const incompatible = candidate.recommendation === 'prohibited_incompatible';
 
   return (
@@ -36,19 +39,20 @@ export const MaterialDnaCard: React.FC<MaterialDnaCardProps> = ({ candidate, cla
         <div>
           <h4 className="text-sm font-semibold text-ink-900">{humanize(candidate.intervention_material)}</h4>
           <p className="mt-1 font-mono text-xs text-ink-500 tabular-nums">
-            Compatibility {candidate.compatibility_score.toFixed(1)} / 100
+            {t('material.compatibility', 'Compatibility')} {candidate.compatibility_score.toFixed(1)} / 100
           </p>
         </div>
-        <StatusBadge label={rec.label} variant={rec.variant} />
+        <StatusBadge label={recLabel} variant={rec.variant} />
       </header>
 
       <dl className="mt-4 space-y-1.5">
         {DIMENSIONS.map(({ key, label, meaning }) => {
           const value = candidate.compatibility_dimensions?.[key];
           if (typeof value !== 'number') return null;
+          const translatedLabel = t('material.' + key, label);
           return (
             <div key={key} className="grid grid-cols-[6.5rem_minmax(0,1fr)_2.5rem] items-center gap-3 text-xs" title={meaning}>
-              <dt className="text-ink-600">{label}</dt>
+              <dt className="text-ink-600">{translatedLabel}</dt>
               <dd className="relative h-[5px] bg-ink-900/10" aria-hidden="true">
                 <span
                   className={`absolute inset-y-0 left-0 ${value < 4 ? 'bg-danger-500' : value < 7 ? 'bg-ochre-500' : 'bg-jade-500'}`}
@@ -57,7 +61,7 @@ export const MaterialDnaCard: React.FC<MaterialDnaCardProps> = ({ candidate, cla
               </dd>
               <dd className="text-right font-mono text-ink-900 tabular-nums">
                 {value.toFixed(1)}
-                <span className="sr-only"> out of 10 for {label.toLowerCase()}</span>
+                <span className="sr-only"> out of 10 for {translatedLabel.toLowerCase()}</span>
               </dd>
             </div>
           );

@@ -1,18 +1,20 @@
 import React from 'react';
 import { AppRoute } from '../types';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export interface NavItem {
   route: AppRoute;
-  label: string;
+  labelKey: string;
+  defaultLabel: string;
   index: string;
 }
 
 export const APP_NAV_ITEMS: NavItem[] = [
-  { route: '/upload', label: 'Inspect', index: '01' },
-  { route: '/analysis', label: 'Findings', index: '02' },
-  { route: '/report', label: 'Report', index: '03' },
-  { route: '/knowledge', label: 'Knowledge', index: '04' },
-  { route: '/gallery', label: 'Gallery', index: '05' },
+  { route: '/upload', labelKey: 'nav.upload', defaultLabel: 'Inspect', index: '01' },
+  { route: '/analysis', labelKey: 'nav.findings', defaultLabel: 'Findings', index: '02' },
+  { route: '/report', labelKey: 'nav.report', defaultLabel: 'Report', index: '03' },
+  { route: '/knowledge', labelKey: 'nav.knowledge', defaultLabel: 'Knowledge', index: '04' },
+  { route: '/gallery', labelKey: 'nav.gallery', defaultLabel: 'Gallery', index: '05' },
 ];
 
 export interface NavigationProps {
@@ -31,6 +33,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   orientation = 'horizontal',
   className = '',
 }) => {
+  const { t } = useLanguage();
   const vertical = orientation === 'vertical';
 
   return (
@@ -38,6 +41,7 @@ export const Navigation: React.FC<NavigationProps> = ({
       {APP_NAV_ITEMS.map((item) => {
         const active = currentRoute === item.route;
         const showSessionDot = hasSession && (item.route === '/analysis' || item.route === '/report');
+        const translatedLabel = t(item.labelKey) || item.defaultLabel;
         return (
           <li key={item.route}>
             <a
@@ -61,7 +65,7 @@ export const Navigation: React.FC<NavigationProps> = ({
               <span className={`font-mono text-[0.625rem] tabular-nums ${active ? 'text-ws-moss' : 'text-ws-faint'}`}>
                 {item.index}
               </span>
-              <span>{item.label}</span>
+              <span>{translatedLabel}</span>
               {showSessionDot && (
                 <span className="h-1.5 w-1.5 rounded-full bg-ws-moss" aria-label="(inspection loaded)" />
               )}

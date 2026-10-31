@@ -2,6 +2,7 @@ import React, { useId, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { ACCEPTED_IMAGE_TYPES, MAX_UPLOAD_BYTES } from '../services/api';
 import { formatBytes } from '../utils/analysis';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export interface SelectedImage {
   file: File;
@@ -23,13 +24,13 @@ export interface UploadZoneProps {
 }
 
 /** Validates against the same rules the backend enforces, before any bytes are sent. */
-const validate = (file: File): string | null => {
+const validate = (file: File, t: (k: string, fallback?: string) => string): string | null => {
   if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-    return `“${file.name}” is ${file.type || 'an unknown type'}. Use a JPEG, PNG or WebP photograph.`;
+    return `“${file.name}” ${t('upload.errorUnknownType', 'is an unsupported format. Use a JPEG, PNG or WebP photograph.')}`;
   }
-  if (file.size === 0) return `“${file.name}” is empty.`;
+  if (file.size === 0) return `“${file.name}” ${t('upload.errorEmpty', 'is empty.')}`;
   if (file.size > MAX_UPLOAD_BYTES) {
-    return `“${file.name}” is ${formatBytes(file.size)}. The limit is ${formatBytes(MAX_UPLOAD_BYTES)}.`;
+    return `“${file.name}” (${formatBytes(file.size)}) ${t('upload.errorTooLarge', 'exceeds the file size limit.')}`;
   }
   return null;
 };
@@ -51,6 +52,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
   previewSlot,
   className = '',
 }) => {
+  const { t } = useLanguage();
   const inputId = useId();
   const hintId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -59,7 +61,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
 
   const accept = async (file: File | undefined) => {
     if (!file || locked) return;
-    const problem = validate(file);
+    const problem = validate(file, t);
     if (problem) {
       setError(problem);
       return;
@@ -71,7 +73,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
       onSelect({ file, previewUrl: url, width, height });
     } catch {
       URL.revokeObjectURL(url);
-      setError(`“${file.name}” could not be decoded as an image.`);
+      setError(`“${file.name}” ${t('upload.errorDecode', 'could not be decoded as an image.')}`);
     }
     if (inputRef.current) inputRef.current.value = '';
   };
@@ -124,7 +126,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
                 htmlFor={inputId}
                 className="inline-flex h-8 cursor-pointer items-center rounded-lg px-3 text-[0.8125rem] font-medium text-ws-text transition-colors duration-fast hover:bg-ws-text/[0.08] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-ws-moss"
               >
-                Replace
+                {t('upload.replace', 'Replace')}
               </label>
               <button
                 type="button"
@@ -135,7 +137,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
                 className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[0.8125rem] font-medium text-ws-muted transition-colors duration-fast hover:bg-ws-text/[0.08] hover:text-ws-text"
               >
                 <Icon name="close" className="h-3.5 w-3.5" />
-                Remove
+                {t('upload.remove', 'Remove')}
               </button>
             </div>
           )}
@@ -201,15 +203,15 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
         </span>
         <span className="max-w-[22rem]">
           <span className="block font-display text-[1.875rem] font-medium leading-[1.1] text-ws-text">
-            {dragging ? 'Release to place the photograph' : 'Place a photograph in the niche'}
+            {dragging ? t('upload.releaseDrop', 'Release to place the photograph') : t('upload.dropNiche', 'Place a photograph in the niche')}
           </span>
           <span className="mt-3 block text-[0.9375rem] leading-relaxed text-ws-muted">
-            Drag an image here, or{' '}
-            <span className="font-medium text-ws-text underline decoration-ws-text/40 underline-offset-4">choose a file</span>. A
-            square-on view of a wall, flight of steps or surface works best.
+            {t('upload.dragPrompt', 'Drag an image here, or')}{' '}
+            <span className="font-medium text-ws-text underline decoration-ws-text/40 underline-offset-4">{t('upload.chooseFile', 'choose a file')}</span>
+            {t('upload.dragHint', '. A square-on view of a wall, flight of steps or surface works best.')}
           </span>
           <span id={hintId} className="mt-4 block text-[0.8125rem] text-ws-faint">
-            JPEG, PNG or WebP · up to {formatBytes(MAX_UPLOAD_BYTES)}
+            {t('upload.formatHint', 'JPEG, PNG or WebP · up to 10 MB')}
           </span>
         </span>
       </label>

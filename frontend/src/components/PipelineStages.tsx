@@ -1,6 +1,7 @@
 import React from 'react';
 import { Icon } from './Icon';
 import { LoadingState } from './LoadingState';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export type StageStatus = 'pending' | 'active' | 'done' | 'failed' | 'skipped';
 
@@ -75,6 +76,7 @@ export const PipelineStages: React.FC<{
   /** Side by side from md up (stacked below), for full-width status strips. */
   orientation?: 'vertical' | 'horizontal';
 }> = ({ stages, className = '', tone = 'light', orientation = 'vertical' }) => {
+  const { t: translate } = useLanguage();
   const t = TEXT[tone];
   const horizontal = orientation === 'horizontal';
   return (
@@ -104,7 +106,9 @@ export const PipelineStages: React.FC<{
               <h3 className={`text-[0.9375rem] font-medium ${stage.status === 'pending' || stage.status === 'skipped' ? t.quiet : t.title}`}>
                 {stage.title}
               </h3>
-              <span className={`text-[0.8125rem] ${t.status[stage.status]}`}>{STATUS_TEXT[stage.status]}</span>
+              <span className={`text-[0.8125rem] ${t.status[stage.status]}`}>
+                {translate(`pipeline.${stage.status}`, STATUS_TEXT[stage.status])}
+              </span>
             </div>
             <p className={`mt-1 text-[0.8125rem] leading-relaxed ${t.body}`}>{stage.description}</p>
 

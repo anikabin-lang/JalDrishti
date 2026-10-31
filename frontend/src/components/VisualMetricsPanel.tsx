@@ -1,6 +1,7 @@
 import React from 'react';
 import { DetectionItem, ScaleReference } from '../types';
 import { defectColor, formatNumber, formatPercent, humanize } from '../utils/analysis';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export interface VisualMetricsPanelProps {
   detections: DetectionItem[];
@@ -27,13 +28,13 @@ export const VisualMetricsPanel: React.FC<VisualMetricsPanelProps> = ({
   onHighlight,
   className = '',
 }) => {
+  const { t } = useLanguage();
   const calibrated = scaleReference?.calibrated === true && !!scaleReference.pixels_per_millimeter;
 
   if (detections.length === 0) {
     return (
       <p className={`border-y border-ink-900/10 py-6 text-sm text-ink-700 ${className}`}>
-        The vision service returned no detections for this image. This does not mean the structure is free of defects —
-        only that none were identified in this photograph by the current model.
+        {t('metrics.noDetectionsNote', 'The vision service returned no detections for this image. This does not mean the structure is free of defects — only that none were identified in this photograph by the current model.')}
       </p>
     );
   }
@@ -42,16 +43,16 @@ export const VisualMetricsPanel: React.FC<VisualMetricsPanelProps> = ({
     <div className={className}>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[46rem] border-collapse text-left text-sm">
-          <caption className="sr-only">Detections returned by the vision service</caption>
+          <caption className="sr-only">{t('metrics.caption', 'Detections returned by the vision service')}</caption>
           <thead>
             <tr className="border-b border-ink-900/20 text-xs text-ink-600">
-              <th scope="col" className="py-2.5 pr-4 font-medium">Class</th>
-              <th scope="col" className="py-2.5 pr-4 font-medium">Detection confidence</th>
-              <th scope="col" className="py-2.5 pr-4 font-medium">Relative extent (image-space)</th>
-              <th scope="col" className="py-2.5 pr-4 text-right font-medium">Area (px²)</th>
-              <th scope="col" className="py-2.5 pr-4 text-right font-medium">Coverage</th>
-              <th scope="col" className="py-2.5 pr-4 text-right font-medium">Components</th>
-              <th scope="col" className="py-2.5 text-right font-medium">Length (px)</th>
+              <th scope="col" className="py-2.5 pr-4 font-medium">{t('metrics.class', 'Class')}</th>
+              <th scope="col" className="py-2.5 pr-4 font-medium">{t('metrics.confidence', 'Detection confidence')}</th>
+              <th scope="col" className="py-2.5 pr-4 font-medium">{t('metrics.relativeExtent', 'Relative extent (image-space)')}</th>
+              <th scope="col" className="py-2.5 pr-4 text-right font-medium">{t('metrics.area', 'Area (px²)')}</th>
+              <th scope="col" className="py-2.5 pr-4 text-right font-medium">{t('metrics.coverage', 'Coverage')}</th>
+              <th scope="col" className="py-2.5 pr-4 text-right font-medium">{t('metrics.components', 'Components')}</th>
+              <th scope="col" className="py-2.5 text-right font-medium">{t('metrics.length', 'Length (px)')}</th>
             </tr>
           </thead>
           <tbody>
@@ -70,12 +71,12 @@ export const VisualMetricsPanel: React.FC<VisualMetricsPanelProps> = ({
                 <th scope="row" className="py-3 pr-4 font-medium text-ink-900">
                   <span className="flex items-center gap-2">
                     <span className="h-2.5 w-2.5 shrink-0 rounded-[1px]" style={{ backgroundColor: defectColor(d.class_name) }} aria-hidden="true" />
-                    {humanize(d.class_name)}
+                    {t('defect.' + d.class_name, humanize(d.class_name))}
                   </span>
                 </th>
                 <td className="py-3 pr-4 font-mono tabular-nums text-ink-900">{formatPercent(d.confidence, 1)}</td>
                 <td className={`py-3 pr-4 ${d.relative_severity ? EXTENT_STYLE[d.relative_severity] : 'text-ink-500'}`}>
-                  {d.relative_severity ? humanize(d.relative_severity) : 'Not reported'}
+                  {d.relative_severity ? t('severity.' + d.relative_severity, humanize(d.relative_severity)) : t('metrics.notReported', 'Not reported')}
                 </td>
                 <td className="py-3 pr-4 text-right font-mono tabular-nums text-ink-700">{formatNumber(d.pixel_area)}</td>
                 <td className="py-3 pr-4 text-right font-mono tabular-nums text-ink-700">{formatPercent(d.coverage_ratio, 2)}</td>
@@ -91,8 +92,7 @@ export const VisualMetricsPanel: React.FC<VisualMetricsPanelProps> = ({
       <p className="mt-3 text-xs leading-relaxed text-ink-500">
         {calibrated
           ? `Scale reference supplied: ${scaleReference!.pixels_per_millimeter} px/mm (${scaleReference!.method ?? 'method not stated'}).`
-          : 'Image-space measurements; no physical scale was supplied, so pixel values are not physical dimensions.'}{' '}
-        “Relative extent” is the vision service’s coverage-based grading, not an engineering severity rating.
+          : t('metrics.imageSpaceNote', 'Image-space measurements; no physical scale was supplied, so pixel values are not physical dimensions. “Relative extent” is the vision service’s coverage-based grading, not an engineering severity rating.')}
       </p>
     </div>
   );
