@@ -142,7 +142,7 @@ export const BaselineInspectionWizard: React.FC<{
           <select
             value={selectedStructureId}
             onChange={(e) => setSelectedStructureId(e.target.value)}
-            className="w-full rounded-lg border border-ws-border bg-ws-bg px-3 py-2 text-sm text-ws-text focus:border-ws-jade focus:outline-none"
+            className="w-full rounded-lg border border-ws-border bg-[#ffffff] px-3 py-2 text-sm text-black placeholder:text-gray-500 focus:border-ws-jade focus:outline-none"
           >
             {structures.map((s) => (
               <option key={s.structure_id} value={s.structure_id}>
@@ -417,7 +417,7 @@ export const BaselineInspectionWizard: React.FC<{
                   placeholder={t('baseline.namePlaceholder', 'e.g. Chand Baori, Abhaneri')}
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  className="w-full rounded-lg border border-ws-border bg-ws-bg px-3 py-2 text-sm text-ws-text focus:border-ws-jade focus:outline-none"
+                  className="w-full rounded-lg border border-ws-border bg-[#ffffff] px-3 py-2 text-sm text-black placeholder:text-gray-500 focus:border-ws-jade focus:outline-none"
                 />
               </div>
 
@@ -426,7 +426,7 @@ export const BaselineInspectionWizard: React.FC<{
                 <select
                   value={newTypology}
                   onChange={(e) => setNewTypology(e.target.value)}
-                  className="w-full rounded-lg border border-ws-border bg-ws-bg px-3 py-2 text-sm text-ws-text focus:border-ws-jade focus:outline-none"
+                  className="w-full rounded-lg border border-ws-border bg-[#ffffff] px-3 py-2 text-sm text-black placeholder:text-gray-500 focus:border-ws-jade focus:outline-none"
                 >
                   <option value="baoli">{t('typology.baoli', 'Baoli — Stepwell')}</option>
                   <option value="bawari">{t('typology.bawari', 'Bawari — Stepped Reservoir')}</option>
@@ -446,7 +446,7 @@ export const BaselineInspectionWizard: React.FC<{
                   placeholder={t('baseline.locationPlaceholder', 'e.g. Dausa District, Rajasthan')}
                   value={newLocation}
                   onChange={(e) => setNewLocation(e.target.value)}
-                  className="w-full rounded-lg border border-ws-border bg-ws-bg px-3 py-2 text-sm text-ws-text focus:border-ws-jade focus:outline-none"
+                  className="w-full rounded-lg border border-ws-border bg-[#ffffff] px-3 py-2 text-sm text-black placeholder:text-gray-500 focus:border-ws-jade focus:outline-none"
                 />
               </div>
 
@@ -459,7 +459,7 @@ export const BaselineInspectionWizard: React.FC<{
                   placeholder={t('baseline.regionPlaceholder', 'e.g. Northern India, Rajasthan')}
                   value={newRegion}
                   onChange={(e) => setNewRegion(e.target.value)}
-                  className="w-full rounded-lg border border-ws-border bg-ws-bg px-3 py-2 text-sm text-ws-text focus:border-ws-jade focus:outline-none"
+                  className="w-full rounded-lg border border-ws-border bg-[#ffffff] px-3 py-2 text-sm text-black placeholder:text-gray-500 focus:border-ws-jade focus:outline-none"
                 />
               </div>
 

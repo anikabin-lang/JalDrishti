@@ -610,3 +610,25 @@
     clip-path: none;
   }
 }
+
+/* ------------------------------------------------------------------
+ * Reading scale for the working pages (Inspect, Findings, Report).
+ * Raises only the small text steps by ~1–1.5px, keeping each step distinct,
+ * so labels and body copy read comfortably without changing spacing, layout
+ * or the shared chrome. Print keeps the original sizes.
+ * ------------------------------------------------------------------ */
+@media screen {
+  .ws-readable .text-\[0\.625rem\] { font-size: 0.71875rem; }  /* 10 → 11.5px */
+  .ws-readable .text-\[0\.6875rem\],
+  .ws-readable .text-eyebrow,
+  .ws-readable .eyebrow { font-size: 0.78125rem; }              /* 11 → 12.5px */
+  .ws-readable .text-xs { font-size: 0.84375rem; }               /* 12 → 13.5px */
+  .ws-readable .text-\[0\.8125rem\] { font-size: 0.90625rem; }  /* 13 → 14.5px */
+  .ws-readable .text-sm,
+  .ws-readable .text-\[0\.875rem\] { font-size: 0.96875rem; }   /* 14 → 15.5px */
+  .ws-readable .text-\[0\.9375rem\],
+  .ws-readable .text-\[0\.975rem\] { font-size: 1.03125rem; }   /* 15 → 16.5px */
+  .ws-readable .text-base { font-size: 1.0625rem; }              /* 16 → 17px */
+  .ws-readable .text-\[1\.0625rem\] { font-size: 1.125rem; }    /* 17 → 18px */
+  .ws-readable .text-lg { font-size: 1.1875rem; }                /* 18 → 19px */
+}

@@ -87,6 +87,13 @@ export interface RootCauseItem {
   probable_cause: string;
   evidence_rules: string[];
   urgency?: RootCauseUrgency;
+  /** Fields below are sent by the live `/analyze` rule engine but absent from the fixture. */
+  observed_indicator?: string;
+  additional_investigation_required?: string[];
+  expert_review_required?: boolean;
+  expert_specialty?: string;
+  supporting_sources?: string[];
+  uncertainty_note?: string;
 }
 
 export interface EngineeringResultContract {

@@ -60,14 +60,20 @@ export const App: React.FC = () => {
   return (
     <AppShell currentRoute={currentRoute} onRouteChange={handleNavigate} session={session}>
       {currentRoute === '/upload' && (
-        <UploadPage onComplete={handleInspectionComplete} onRouteChange={handleNavigate} />
+        <div className="ws-readable">
+          <UploadPage onComplete={handleInspectionComplete} onRouteChange={handleNavigate} />
+        </div>
       )}
       {currentRoute === '/analysis' && (
-        <AnalysisPage session={session} onRouteChange={handleNavigate} onLoadFixture={handleLoadFixture} />
+        <div className="ws-readable">
+          <AnalysisPage session={session} onRouteChange={handleNavigate} onLoadFixture={handleLoadFixture} />
+        </div>
       )}
       {currentRoute === '/knowledge' && <KnowledgePage onRouteChange={handleNavigate} />}
       {currentRoute === '/report' && (
-        <ReportPage session={session} onRouteChange={handleNavigate} onLoadFixture={handleLoadFixture} />
+        <div className="ws-readable">
+          <ReportPage session={session} onRouteChange={handleNavigate} onLoadFixture={handleLoadFixture} />
+        </div>
       )}
       {currentRoute === '/gallery' && (
         <GalleryPage onRouteChange={handleNavigate} onInspectionComplete={handleInspectionComplete} />

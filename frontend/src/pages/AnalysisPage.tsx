@@ -6,16 +6,16 @@ import { Icon } from '../components/Icon';
 import { EmptyState } from '../components/EmptyState';
 import { InspectionCanvas } from '../components/InspectionCanvas';
 import { DefectLegend } from '../components/DefectLegend';
-import { VisualMetricsPanel } from '../components/VisualMetricsPanel';
-import { ScoreCard } from '../components/ScoreCard';
-import { ConservationChain } from '../components/ConservationChain';
-import { RootCauseAnalysisCard } from '../components/RootCauseAnalysisCard';
-import { MaterialDnaCard } from '../components/MaterialDnaCard';
-import { WhyThisRecommendation } from '../components/WhyThisRecommendation';
-import { RestorationRoadmap } from '../components/RestorationRoadmap';
 import { ProvenanceBanner } from '../components/ProvenanceBanner';
 import { PipelineTriageAlert } from '../components/PipelineTriageAlert';
 import { OriginTag } from '../components/StatusBadge';
+import { AnalysisOverview } from '../components/analysis/AnalysisOverview';
+import { FindingsSection } from '../components/analysis/FindingsSection';
+import { ProbableCauses } from '../components/analysis/ProbableCauses';
+import { EngineeringAssessment } from '../components/analysis/EngineeringAssessment';
+import { MaterialCompatibility } from '../components/analysis/MaterialCompatibility';
+import { RestorationStrategy } from '../components/analysis/RestorationStrategy';
+import { TechnicalDetails } from '../components/analysis/TechnicalDetails';
 import { AppRoute, InspectionSession } from '../types';
 import { humanize, listEngineeringMetrics, readRootCauses, resolveImageSource, visionOrigin } from '../utils/analysis';
 import { downloadInspectionPdf } from '../services/api';
@@ -130,23 +130,17 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({ session, onRouteChan
       }
       banner={<ProvenanceBanner session={session} />}
     >
-      <ConservationChain
-        result={result}
-        onJump={scrollToSection}
-        isFixture={session.provenance === 'fixture'}
-        seeOrigin={visionOrigin(session)}
-        className="mb-14"
-      />
+      <AnalysisOverview result={result} onJump={scrollToSection} className="mb-20" />
 
-      <div className="space-y-16">
+      <div className="space-y-20">
         <Section
           id="findings"
           index="01"
-          title={t('analysis.visualFindings', 'Visual findings')}
+          title={t('dash.keyFindings', 'Key findings')}
           description={
             result.vision.relevance_status === 'irrelevant'
               ? t('analysis.gateRejected', 'Inspection gate rejected this image as non-heritage subject matter.')
-              : t('analysis.regionsIdentified', 'Regions identified in the photograph.')
+              : t('dash.keyFindingsDesc', 'What the vision model found in the photograph, ordered by relative image-space extent.')
           }
           aside={<OriginTag kind={visionOrigin(session)} />}
         >
@@ -167,39 +161,31 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({ session, onRouteChan
               </div>
             </div>
           ) : (
-            <>
-              <div className="grid gap-6 lg:grid-cols-[minmax(0,44rem)_minmax(0,1fr)] lg:items-start">
-                <InspectionCanvas
-                  imageSrc={imageSrc}
-                  imageDimensions={result.vision.image_dimensions}
-                  detections={detections}
-                  visibleClasses={visibleClasses}
-                  highlighted={highlighted}
-                  onHighlight={setHighlighted}
-                />
-                <div className="space-y-4 text-sm leading-relaxed text-ink-700">
+            <FindingsSection
+              detections={detections}
+              scaleReference={result.vision.scale_reference}
+              highlighted={highlighted}
+              onHighlight={setHighlighted}
+              canvas={
+                <div className="space-y-4">
+                  <InspectionCanvas
+                    imageSrc={imageSrc}
+                    imageDimensions={result.vision.image_dimensions}
+                    detections={detections}
+                    visibleClasses={visibleClasses}
+                    highlighted={highlighted}
+                    onHighlight={setHighlighted}
+                  />
                   <DefectLegend detections={detections} visibleClasses={visibleClasses} onToggleClass={toggleClass} />
-                  <p>
-                    {detections.length === 0
-                      ? t('analysis.noRegions', 'No structural defect regions were returned for this photograph.')
-                      : `${detections.length} ${t('analysis.regionsReturned', 'regions returned. Use the toggles to isolate a class; hover a box or a table row to link them.')}`}
-                  </p>
-                  <p className="text-xs text-ink-500">
+                  <p className="text-xs leading-relaxed text-ink-500">
                     {t(
                       'analysis.confidenceNote',
                       'Detection confidence is the model’s certainty that a region belongs to a class. It says nothing about how serious the defect is.'
                     )}
                   </p>
                 </div>
-              </div>
-              <VisualMetricsPanel
-                className="mt-8"
-                detections={detections}
-                scaleReference={result.vision.scale_reference}
-                highlighted={highlighted}
-                onHighlight={setHighlighted}
-              />
-            </>
+              }
+            />
           )}
         </Section>
 
@@ -213,7 +199,7 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({ session, onRouteChan
           )}
           aside={<OriginTag kind={session.provenance === 'fixture' ? 'fixture' : 'rules'} />}
         >
-          <RootCauseAnalysisCard causes={causes} />
+          <ProbableCauses causes={causes} />
         </Section>
 
         <Section
@@ -226,15 +212,7 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({ session, onRouteChan
           )}
           aside={<OriginTag kind={session.provenance === 'fixture' ? 'fixture' : 'rules'} />}
         >
-          {metrics.length === 0 ? (
-            <p className="text-sm text-ink-600">{t('analysis.noEngineeringScores', 'The response contained no engineering scores.')}</p>
-          ) : (
-            <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-              {metrics.map((m) => (
-                <ScoreCard key={m.key} label={m.label} metric={m.metric} direction={m.direction} />
-              ))}
-            </div>
-          )}
+          <EngineeringAssessment metrics={metrics} />
         </Section>
 
         <Section
@@ -242,8 +220,8 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({ session, onRouteChan
           index="04"
           title={t('analysis.materialCompatibility', 'Material compatibility')}
           description={t(
-            'analysis.materialCompatibilityDesc',
-            'How candidate repair materials compare with the assumed original, across seven dimensions scored 0–10.'
+            'dash.materialsDesc',
+            'Candidate repair materials ranked against the assumed original, with a seven-dimension profile for comparison.'
           )}
           aside={
             <>
@@ -252,20 +230,13 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({ session, onRouteChan
             </>
           }
         >
-          <div className="grid gap-10 lg:grid-cols-12">
-            <WhyThisRecommendation material={result.material} className="lg:col-span-4 lg:self-start" />
-            <div className="grid gap-x-8 gap-y-8 md:grid-cols-2 lg:col-span-8">
-              {result.material.candidate_interventions.map((c) => (
-                <MaterialDnaCard key={c.intervention_material} candidate={c} />
-              ))}
-            </div>
-          </div>
+          <MaterialCompatibility material={result.material} />
         </Section>
 
         <Section
           id="restoration"
           index="05"
-          title={t('analysis.restorationRoadmap', 'Conservation considerations')}
+          title={t('dash.restorationStrategy', 'Restoration strategy')}
           description={t(
             'analysis.restorationRoadmapDesc',
             'A phased starting point for planning. Every action requires review by a qualified conservation engineer before work begins.'
@@ -277,7 +248,16 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({ session, onRouteChan
             </>
           }
         >
-          <RestorationRoadmap restoration={result.restoration} />
+          <RestorationStrategy restoration={result.restoration} />
+        </Section>
+
+        <Section
+          id="technical"
+          index="06"
+          title={t('dash.technical', 'Technical details & references')}
+          description={t('dash.technicalDesc', 'How this result was produced, and the sources its rules and planner cite.')}
+        >
+          <TechnicalDetails result={result} causes={causes} />
         </Section>
       </div>
     </PageContainer>
