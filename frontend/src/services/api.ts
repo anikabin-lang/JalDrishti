@@ -27,9 +27,16 @@ export const getBaseUrl = (): string => {
   if (envUrl !== undefined && envUrl !== '') {
     return envUrl.replace('://localhost:', '://127.0.0.1:');
   }
-  // When running under Vite dev proxy or same-host deployment, use relative paths
-  if (typeof window !== 'undefined' && (window.location.port === '5173' || window.location.port === '3000')) {
-    return '';
+  // When running in a browser:
+  if (typeof window !== 'undefined') {
+    // If deployed on Vercel or any non-localhost domain, use relative paths for internal proxy rewrites
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return '';
+    }
+    // On localhost, if running under Vite dev proxy, use relative paths
+    if (window.location.port === '5173' || window.location.port === '3000') {
+      return '';
+    }
   }
   return 'http://127.0.0.1:8000';
 };

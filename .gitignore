@@ -66,6 +66,8 @@ backups/
 *.db
 *.sqlite
 *.sqlite3
+data/extracted_documents/
+storage/
 
 # IDE and Editor
 .vscode/*

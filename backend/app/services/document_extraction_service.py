@@ -31,26 +31,68 @@ class DocumentExtractionService:
         filename: str,
         structure_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Extract metadata, defects, recommendations, and embedded images from a PDF file."""
+        """Extract metadata, defects, recommendations, and embedded images from a PDF file.
+
+        Enforces security bounds:
+        - Validates magic PDF header bytes (b'%PDF-').
+        - Restricts maximum PDF file size to 25 MB.
+        - Limits maximum pages processed (50 pages) to prevent CPU/memory exhaustion.
+        - Sanitizes embedded image filenames against path traversal.
+        - Caps extracted image count to prevent disk space exhaustion.
+        """
+        # 1. Payload size check (25 MB max)
+        max_bytes = 25 * 1024 * 1024
+        if len(pdf_bytes) > max_bytes:
+            raise ValueError(f"PDF exceeds maximum permitted size of 25 MB ({len(pdf_bytes)} bytes).")
+
+        # 2. Magic header check (must contain %PDF- in the header)
+        if b"%PDF-" not in pdf_bytes[:1024]:
+            raise ValueError("Invalid PDF format: File header does not match standard PDF magic bytes.")
+
         doc_id = f"doc_{uuid.uuid4().hex[:12]}"
-        output_image_dir = self.storage_dir / doc_id / "images"
+        output_image_dir = (self.storage_dir / doc_id / "images").resolve()
         output_image_dir.mkdir(parents=True, exist_ok=True)
 
-        reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
+        try:
+            reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
+        except Exception as e:
+            raise ValueError(f"Corrupted or unreadable PDF document: {e}") from e
+
         total_pages = len(reader.pages)
+        if total_pages > 50:
+            raise ValueError(f"PDF exceeds maximum page limit (50 pages). Document has {total_pages} pages.")
 
         extracted_text_pages: List[str] = []
         extracted_images: List[Dict[str, Any]] = []
+        max_images = 30
 
         for page_idx, page in enumerate(reader.pages, start=1):
             page_text = page.extract_text() or ""
             extracted_text_pages.append(page_text)
 
-            # Extract embedded images
+            # Extract embedded images with traversal prevention
             try:
                 for img_idx, img_obj in enumerate(page.images, start=1):
-                    img_filename = f"page_{page_idx}_img_{img_idx}_{img_obj.name}"
-                    img_path = output_image_dir / img_filename
+                    if len(extracted_images) >= max_images:
+                        break
+
+                    # Defensive extension and filename sanitation
+                    raw_name = getattr(img_obj, "name", "image.jpg")
+                    ext = "jpg"
+                    if "." in raw_name:
+                        candidate_ext = raw_name.rsplit(".", 1)[-1].lower()
+                        if candidate_ext in ("jpg", "jpeg", "png", "webp"):
+                            ext = candidate_ext
+
+                    safe_suffix = uuid.uuid4().hex[:8]
+                    img_filename = f"page_{page_idx}_img_{img_idx}_{safe_suffix}.{ext}"
+                    img_path = (output_image_dir / img_filename).resolve()
+
+                    # Enforce strict directory containment
+                    if not str(img_path).startswith(str(output_image_dir)):
+                        logger.warning("Path traversal attempt blocked for image: %s", raw_name)
+                        continue
+
                     with open(img_path, "wb") as f_img:
                         f_img.write(img_obj.data)
 
@@ -60,7 +102,7 @@ class DocumentExtractionService:
                             "page": page_idx,
                             "filename": img_filename,
                             "path": str(img_path),
-                            "format": img_obj.name.split(".")[-1] if "." in img_obj.name else "jpg",
+                            "format": ext,
                             "size_bytes": len(img_obj.data),
                         }
                     )

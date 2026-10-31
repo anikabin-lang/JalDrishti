@@ -37,7 +37,27 @@
       "destination": "/api/index.py"
     },
     {
+      "source": "/images",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/sites",
+      "destination": "/api/index.py"
+    },
+    {
       "source": "/inspections/:path*",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/structures",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/structures/:path*",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/preferences/:path*",
       "destination": "/api/index.py"
     },
     {

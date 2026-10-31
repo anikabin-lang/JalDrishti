@@ -84,6 +84,15 @@ class Settings(BaseModel):
         )
     )
 
+    # Security & Abuse Prevention Configuration
+    admin_api_key: Optional[str] = Field(
+        default_factory=lambda: os.getenv("ADMIN_API_KEY")
+    )
+    rate_limit_enabled: bool = Field(
+        default_factory=lambda: os.getenv("RATE_LIMIT_ENABLED", "true").lower()
+        in ("true", "1", "yes")
+    )
+
     @property
     def is_cloudinary_configured(self) -> bool:
         """Check if all necessary Cloudinary credentials are provided."""

@@ -273,14 +273,14 @@ class VisionService:
         rel_clf = self._get_relevance_predictor()
         if rel_clf is None:
             return {
-                "inspection_status": "accepted",
-                "decision": "RELEVANT_HERITAGE",
-                "relevance_confidence": 1.0,
+                "inspection_status": "uncertain",
+                "decision": "UNCERTAIN",
+                "relevance_confidence": 0.0,
                 "quality_status": quality_status,
                 "quality_warnings": quality_warnings,
-                "rejection_reason": None,
-                "needs_manual_review": False,
-                "status_message": "Inspection gate bypassed (model unavailable).",
+                "rejection_reason": "Heritage relevance classification model is unavailable. Image held for manual verification.",
+                "needs_manual_review": True,
+                "status_message": "Relevance classifier unavailable. Image held for manual expert verification.",
                 "model_version": self.model_version,
             }
 

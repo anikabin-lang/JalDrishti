@@ -6,6 +6,7 @@ and Knowledge subsystems.
 """
 
 from datetime import datetime, timezone
+import hashlib
 import json
 import logging
 import re
@@ -15,6 +16,7 @@ import uuid
 from fastapi import (
     APIRouter,
     Body,
+    Depends,
     File,
     Form,
     HTTPException,
@@ -28,6 +30,7 @@ from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 
 from backend.app.core.config import settings
+from backend.app.core.security import rate_limit, require_admin_access
 from backend.app.db.image_repository import (
     MetadataPersistenceError,
     image_repository,
@@ -226,6 +229,7 @@ async def _extract_pipeline_request(
     summary="Vision Defect Analysis",
     description="Extract and normalize image-space defect segments from JSON or multipart image uploads.",
     tags=["Vision"],
+    dependencies=[Depends(rate_limit("ai_analysis"))],
 )
 async def analyze_vision(
     request: Request,
@@ -358,6 +362,7 @@ def generate_restoration_roadmap(
     summary="Unified Analysis Pipeline",
     description="Orchestrates full end-to-end multi-disciplinary conservation pipeline from JSON or multipart form.",
     tags=["Pipeline"],
+    dependencies=[Depends(rate_limit("ai_analysis"))],
 )
 async def analyze_structure(
     request: Request,
@@ -448,6 +453,7 @@ def get_literature_sources() -> List[Dict[str, Any]]:
         "uploads to Cloudinary without exposing credentials, and durably records metadata."
     ),
     tags=["Images"],
+    dependencies=[Depends(rate_limit("image_upload"))],
 )
 async def upload_inspection_image(
     request: Request,
@@ -671,6 +677,7 @@ def list_images(
     summary="Search Cloudinary Assets",
     description="Perform structured live asset search directly against Cloudinary using official Search or Admin API.",
     tags=["Images"],
+    dependencies=[Depends(rate_limit("cloud_search"))],
 )
 def search_cloudinary_assets(
     query: Optional[str] = Query(default=None, description="Cloudinary search expression or keywords"),
@@ -756,9 +763,10 @@ def get_image(image_id: str) -> ImageUploadResponse:
     summary="Delete Image Asset",
     description=(
         "Remove image from Cloudinary storage and delete associated durable metadata record. "
-        "Handles partial failures explicitly."
+        "Handles partial failures explicitly. Requires administrative credentials when configured."
     ),
     tags=["Images"],
+    dependencies=[Depends(rate_limit("image_delete")), Depends(require_admin_access)],
 )
 def delete_image(image_id: str) -> ImageDeleteResponse:
     """Delete image asset from both Cloudinary and local metadata repository."""
@@ -905,6 +913,7 @@ def get_heritage_structure(structure_id: str) -> Dict[str, Any]:
     "/structures/{structure_id}/inspections/baseline",
     summary="Execute Baseline Heritage Inspection (Min 3 Photos Required)",
     tags=["Inspections"],
+    dependencies=[Depends(rate_limit("baseline_inspection"))],
 )
 async def execute_baseline_inspection(
     structure_id: str,
@@ -912,9 +921,10 @@ async def execute_baseline_inspection(
 ) -> Dict[str, Any]:
     """Execute mandatory 3-photo baseline inspection with independent AI processing.
 
-    Enforces minimum 3 photographs. Validates image quality and heritage relevance
-    gates on every photo independently. Creates persistent Defect Passports for
-    detected cracks and vegetation. Rejects baseline finalization if <3 valid photos.
+    Enforces minimum 3 photographs (up to max 10 per batch). Validates image quality
+    and heritage relevance gates on every photo independently. Creates persistent
+    Defect Passports for detected cracks and vegetation. Rejects baseline finalization
+    if <3 valid photos or if duplicates are submitted.
     """
     structure = heritage_repo.get_structure(structure_id)
     if not structure:
@@ -925,18 +935,65 @@ async def execute_baseline_inspection(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Baseline inspection requires a mandatory minimum of 3 photographs. Received {len(files)}.",
         )
+    if len(files) > 10:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Maximum 10 photographs can be processed in a single inspection batch. Received {len(files)}.",
+        )
 
     inspection_id = heritage_repo.create_inspection(structure_id, inspection_type="baseline")
 
     processed_images: List[Dict[str, Any]] = []
     created_defects: List[Dict[str, Any]] = []
+    seen_hashes: set[str] = set()
     total_cracks = 0
     total_veg = 0
     valid_count = 0
 
     for idx, upload in enumerate(files, start=1):
-        content = await upload.read()
         image_id = f"img_{uuid.uuid4().hex[:10]}"
+
+        # 0. Defensive bounded streaming read & image format/decodability check
+        try:
+            content, _, _, _ = await read_and_validate_image_upload(upload)
+        except ImageValidationError as val_err:
+            img_rec = {
+                "image_id": image_id,
+                "inspection_id": inspection_id,
+                "structure_id": structure_id,
+                "original_filename": upload.filename or f"image_{idx}.jpg",
+                "quality_status": "corrupt",
+                "relevance_status": "rejected",
+                "relevance_confidence": 0.0,
+                "inspection_status": "rejected",
+                "rejection_reason": f"File validation failed: {val_err}",
+                "results_json": {"inspection_gate": {"inspection_status": "rejected", "status_message": str(val_err)}},
+                "image_order": idx,
+            }
+            heritage_repo.add_inspection_image(img_rec)
+            processed_images.append(img_rec)
+            continue
+
+        # Check for duplicate image uploads within this inspection
+        content_hash = hashlib.sha256(content).hexdigest()
+        if content_hash in seen_hashes:
+            img_rec = {
+                "image_id": image_id,
+                "inspection_id": inspection_id,
+                "structure_id": structure_id,
+                "original_filename": upload.filename or f"image_{idx}.jpg",
+                "quality_status": "duplicate",
+                "relevance_status": "rejected",
+                "relevance_confidence": 0.0,
+                "inspection_status": "rejected",
+                "rejection_reason": "Duplicate photograph detected. Baseline requires independent views.",
+                "results_json": {"inspection_gate": {"inspection_status": "rejected", "status_message": "Duplicate photograph detected."}},
+                "image_order": idx,
+            }
+            heritage_repo.add_inspection_image(img_rec)
+            processed_images.append(img_rec)
+            continue
+        seen_hashes.add(content_hash)
 
         # 1. Independent Inspection Gate (Quality & Heritage Relevance)
         gate_res = vision_service.inspect_image(content)
@@ -1062,6 +1119,7 @@ async def execute_baseline_inspection(
     "/structures/{structure_id}/inspections/repeat",
     summary="Execute Repeat Inspection with Defect Evolution Tracking",
     tags=["Inspections"],
+    dependencies=[Depends(rate_limit("baseline_inspection"))],
 )
 async def execute_repeat_inspection(
     structure_id: str,
@@ -1072,19 +1130,65 @@ async def execute_repeat_inspection(
     if not structure:
         raise HTTPException(status_code=404, detail=f"Structure '{structure_id}' not found.")
 
+    if len(files) > 10:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Maximum 10 photographs can be processed in a single inspection batch. Received {len(files)}.",
+        )
+
     existing_passports = heritage_repo.list_defect_passports(structure_id)
     inspection_id = heritage_repo.create_inspection(structure_id, inspection_type="repeat")
 
     processed_images: List[Dict[str, Any]] = []
     matched_observations: List[Dict[str, Any]] = []
     new_defects: List[Dict[str, Any]] = []
+    seen_hashes: set[str] = set()
     total_cracks = 0
     total_veg = 0
     valid_count = 0
 
     for idx, upload in enumerate(files, start=1):
-        content = await upload.read()
         image_id = f"img_{uuid.uuid4().hex[:10]}"
+
+        try:
+            content, _, _, _ = await read_and_validate_image_upload(upload)
+        except ImageValidationError as val_err:
+            img_rec = {
+                "image_id": image_id,
+                "inspection_id": inspection_id,
+                "structure_id": structure_id,
+                "original_filename": upload.filename or f"image_{idx}.jpg",
+                "quality_status": "corrupt",
+                "relevance_status": "rejected",
+                "relevance_confidence": 0.0,
+                "inspection_status": "rejected",
+                "rejection_reason": f"File validation failed: {val_err}",
+                "results_json": {"inspection_gate": {"inspection_status": "rejected", "status_message": str(val_err)}},
+                "image_order": idx,
+            }
+            heritage_repo.add_inspection_image(img_rec)
+            processed_images.append(img_rec)
+            continue
+
+        content_hash = hashlib.sha256(content).hexdigest()
+        if content_hash in seen_hashes:
+            img_rec = {
+                "image_id": image_id,
+                "inspection_id": inspection_id,
+                "structure_id": structure_id,
+                "original_filename": upload.filename or f"image_{idx}.jpg",
+                "quality_status": "duplicate",
+                "relevance_status": "rejected",
+                "relevance_confidence": 0.0,
+                "inspection_status": "rejected",
+                "rejection_reason": "Duplicate photograph detected.",
+                "results_json": {"inspection_gate": {"inspection_status": "rejected", "status_message": "Duplicate photograph detected."}},
+                "image_order": idx,
+            }
+            heritage_repo.add_inspection_image(img_rec)
+            processed_images.append(img_rec)
+            continue
+        seen_hashes.add(content_hash)
 
         gate_res = vision_service.inspect_image(content)
         if gate_res.get("inspection_status") in ("rejected", "uncertain"):
@@ -1262,6 +1366,7 @@ def export_inspection_pdf(
     "/structures/{structure_id}/documents/upload",
     summary="Upload and Extract Historical Survey PDF",
     tags=["Historical Documents"],
+    dependencies=[Depends(rate_limit("document_upload"))],
 )
 async def upload_historical_survey(
     structure_id: str,
@@ -1275,12 +1380,38 @@ async def upload_historical_survey(
     if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF survey documents are supported.")
 
-    content = await file.read()
-    extraction = document_extraction_service.extract_from_pdf_bytes(
-        content,
-        filename=file.filename or "historical_survey.pdf",
-        structure_id=structure_id,
-    )
+    max_pdf_bytes = 25 * 1024 * 1024
+    buffer = bytearray()
+    chunk_size = 64 * 1024
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        buffer.extend(chunk)
+        if len(buffer) > max_pdf_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="PDF document exceeds maximum permitted size of 25 MB.",
+            )
+
+    content = bytes(buffer)
+    try:
+        extraction = document_extraction_service.extract_from_pdf_bytes(
+            content,
+            filename=file.filename or "historical_survey.pdf",
+            structure_id=structure_id,
+        )
+    except ValueError as val_err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(val_err),
+        ) from val_err
+    except Exception as exc:
+        logger.error("Document extraction error: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to parse and extract survey document.",
+        ) from exc
 
     doc_id = heritage_repo.save_document_record({
         "structure_id": structure_id,
