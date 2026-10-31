@@ -676,7 +676,7 @@ class VisionService:
             )
             if extracted_items:
                 raw_detections.extend(extracted_items)
-                model_tag_suffix = "adaptive_cv"
+                model_tag_suffix = "ensemble_adaptive_cv"
 
         # -------------------------------------------------------------------------
         # STAGE 4: Post-Processing, NMS & False-Positive Elimination

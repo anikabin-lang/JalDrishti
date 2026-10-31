@@ -144,7 +144,7 @@ export const isGateUncertain = (result: AnalysisResultContract): boolean =>
   result.vision.relevance_status === 'uncertain';
 
 export const visionModelRan = (result: AnalysisResultContract): boolean =>
-  /(?:fasterrcnn|yolo|rcnn|ensemble)/i.test(result.vision.processing_metadata?.model_version ?? '');
+  /(?:fasterrcnn|yolo|rcnn|ensemble|adaptive)/i.test(result.vision.processing_metadata?.model_version ?? '');
 
 export const visionOrigin = (
   session: InspectionSession
